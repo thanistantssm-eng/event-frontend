@@ -4,15 +4,17 @@
   </section>
   <section class="auth-form-panel">
     <button class="language" type="button" (click)="chooseLanguage()">◉ English⌄</button>
-    <article class="auth-card" [class.register-card]="mode === 'register'">
-      <span class="auth-icon">{{ mode === 'register' ? '♙' : mode === 'reset' ? '⌑' : '♙' }}</span>
+    <article class="auth-card" [class.register-card]="mode === 'register' || mode === 'setup'">
+      <span class="auth-icon">{{ mode === 'reset' ? '⌑' : '♙' }}</span>
       <h1>
         {{
           mode === 'login'
             ? 'Welcome Back'
             : mode === 'register'
               ? 'Create Your Account'
-              : 'Reset Password'
+              : mode === 'setup'
+                ? 'Set Up Administrator'
+                : 'Reset Password'
         }}
       </h1>
       <p>
@@ -23,16 +25,18 @@
               : 'Sign in to continue to your account'
             : mode === 'register'
               ? 'Join Event Parking and get started in minutes.'
-              : resetStage() === 'request'
-                ? 'Enter your registered email to receive a verification code.'
-                : 'Enter the code and create a new password.'
+              : mode === 'setup'
+                ? 'Create the first administrator account. This option closes after setup.'
+                : resetStage() === 'request'
+                  ? 'Enter your registered email or username to receive a verification code.'
+                  : 'Enter the code and create a new password.'
         }}
       </p>
-      @if (mode === 'login') {
+      @if (mode === 'login' || mode === 'setup') {
         <span class="login-role">{{ roleLabel }} access</span>
       }
       <form (ngSubmit)="submit()">
-        @if (mode === 'register') {
+        @if (mode === 'register' || mode === 'setup') {
           <div class="form-two">
             <label
               >Full Name
@@ -55,7 +59,7 @@
                 /></div
             ></label>
           </div>
-          <label
+          @if (mode === 'register') { <label
             >Mobile Number
             <div>
               <span>☎</span
@@ -64,9 +68,9 @@
                 [(ngModel)]="phone"
                 placeholder="Enter your mobile number"
               /></div
-          ></label>
+          ></label> }
         }
-        @if (mode !== 'register' && !(mode === 'login' && loginStage() === 'otp')) {
+        @if (mode !== 'register' && mode !== 'setup' && !(mode === 'login' && loginStage() === 'otp')) {
           <label
             >Email or Username
             <div>
@@ -95,7 +99,7 @@
                   name="password"
                   [(ngModel)]="password"
                   [type]="passwordVisible() ? 'text' : 'password'"
-                  [placeholder]="mode === 'reset' ? 'Create new password' : 'Enter your password'"
+                  [placeholder]="mode === 'reset' || mode === 'setup' ? 'Create new password' : 'Enter your password'"
                 /><button type="button" (click)="passwordVisible.set(!passwordVisible())">◉</button>
               </div></label
             >
@@ -119,7 +123,7 @@
             <label class="check"
               ><input type="checkbox" [checked]="remember()" (change)="remember.set(!remember())" />
               Remember me</label
-            >@if (!isAdminEntry) { <a routerLink="/reset-password">Forgot Password?</a> }
+            ><a [routerLink]="isAdminEntry ? '/admin/reset-password' : '/reset-password'">Forgot Password?</a>
           </div>
         }
         @if (mode === 'login' && loginStage() === 'otp') {
@@ -142,9 +146,11 @@
                 ? loginStage() === 'otp' ? 'Verify & Sign In' : 'Continue with Email'
               : mode === 'register'
                 ? 'Create Account'
-                : resetStage() === 'request'
-                  ? 'Send Verification Code'
-                  : 'Reset Password'
+                : mode === 'setup'
+                  ? 'Create Administrator'
+                  : resetStage() === 'request'
+                    ? 'Send Verification Code'
+                    : 'Reset Password'
           }}
           →
         </button>
@@ -152,6 +158,12 @@
           <p class="auth-message">{{ message() }}</p>
         }
       </form>
+      @if (isAdminEntry && mode === 'login' && adminSetupRequired()) {
+        <p class="switch">First time setup? <a routerLink="/admin/setup">Create administrator</a></p>
+      }
+      @if (isAdminEntry && mode !== 'login') {
+        <p class="switch"><a routerLink="/admin/login">Back to Admin Sign In</a></p>
+      }
       @if (!isAdminEntry) {
       <p class="switch">
         {{

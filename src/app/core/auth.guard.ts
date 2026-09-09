@@ -10,7 +10,10 @@ function roleGuard(required?: AppRole): CanActivateFn {
     const auth = inject(AuthService);
     const role = auth.role();
     if (!auth.isAuthenticated() || !role) {
-      return router.createUrlTree(['/login'], { queryParams: { returnUrl: router.url } });
+      const loginPath = required === 'Admin' ? '/admin/login' : '/login';
+      const queryParams: Record<string, string> = { returnUrl: router.url };
+      if (required === 'Organizer') queryParams['role'] = 'organizer';
+      return router.createUrlTree([loginPath], { queryParams });
     }
     if (required && role !== required) {
       return router.createUrlTree([auth.landingRoute(role)]);

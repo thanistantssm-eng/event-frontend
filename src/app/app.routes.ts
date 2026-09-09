@@ -69,6 +69,8 @@ export const routes: Routes = [
   { path: '', component: Landing, canActivate: [publicEntryGuard], title: 'Eventora | Events • Tickets • Parking' },
   { path: 'login', component: Auth, canActivate: [publicEntryGuard], title: 'Login | Event Parking Reservation System' },
   { path: 'admin/login', component: Auth, title: 'Admin Login | Event Parking Reservation System' },
+  { path: 'admin/setup', component: Auth, title: 'Admin Setup | Event Parking Reservation System' },
+  { path: 'admin/reset-password', component: Auth, title: 'Admin Password Reset | Event Parking' },
   { path: 'register', component: Auth, canActivate: [publicEntryGuard], title: 'Create Account | Event Parking' },
   { path: 'forgot-password', component: Auth, canActivate: [publicEntryGuard], title: 'Forgot Password | Event Parking' },
   { path: 'reset-password', component: Auth, canActivate: [publicEntryGuard], title: 'Reset Password | Event Parking' },

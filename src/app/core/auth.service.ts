@@ -24,6 +24,22 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
 
+  adminSetupStatus(): Observable<boolean> {
+    return this.http
+      .get<ApiEnvelope<{ setupRequired: boolean }>>(`${API_ROOT}/auth/admin-setup-status`)
+      .pipe(map((response) => response.data.setupRequired));
+  }
+
+  setupAdmin(username: string, email: string, password: string): Observable<{ userId: number; role: AppRole }> {
+    return this.http
+      .post<ApiEnvelope<{ userId: number; role: AppRole }>>(`${API_ROOT}/auth/admin-setup`, {
+        username,
+        email,
+        password,
+      })
+      .pipe(map((response) => response.data));
+  }
+
   login(identifier: string, password: string): Observable<LoginPending> {
     return this.http
       .post<ApiEnvelope<LoginPending>>(`${API_ROOT}/auth/login`, { identifier, password })
@@ -43,6 +59,20 @@ export class AuthService {
     return this.http
       .post<ApiEnvelope<LoginPending>>(`${API_ROOT}/auth/resend-otp`, { challengeId })
       .pipe(map((response) => response.data));
+  }
+
+  requestPasswordReset(identifier: string): Observable<LoginPending> {
+    return this.http
+      .post<ApiEnvelope<LoginPending>>(`${API_ROOT}/auth/password-reset/request`, { identifier })
+      .pipe(map((response) => response.data));
+  }
+
+  resetPassword(challengeId: string, otp: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${API_ROOT}/auth/password-reset/confirm`, {
+      challengeId,
+      otp,
+      newPassword,
+    });
   }
 
   register(request: RegisterRequest): Observable<{ userId: number; role: AppRole }> {
