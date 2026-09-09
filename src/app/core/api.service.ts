@@ -170,6 +170,7 @@ export class ApiService {
     return this.http.post<Approval>(`${API_ROOT}/approvals/events/${eventId}/submit`, { organizerNotes });
   }
   pendingApprovals() { return this.http.get<Approval[]>(`${API_ROOT}/approvals/pending`); }
+  myApprovals() { return this.http.get<Approval[]>(`${API_ROOT}/approvals/me`); }
   approve(approvalId: number, reason?: string) {
     return this.http.put<Approval>(`${API_ROOT}/approvals/${approvalId}/approve`, { reason });
   }
@@ -247,6 +248,7 @@ export class ApiService {
   customerBookings(customerId: number) {
     return this.http.get<Booking[]>(`${API_ROOT}/bookings/customer/${customerId}`);
   }
+  allBookings() { return this.http.get<Booking[]>(`${API_ROOT}/bookings`); }
   eventBookings(eventId: number) {
     const params = new HttpParams().set('eventId', eventId);
     return this.http.get<Booking[]>(`${API_ROOT}/bookings`, { params });
@@ -271,6 +273,7 @@ export class ApiService {
     return this.http.post<Payment>(`${API_ROOT}/bookings/${bookingId}/payment`, { method });
   }
   myPayments() { return this.http.get<Payment[]>(`${API_ROOT}/payments/me`); }
+  allPayments() { return this.http.get<Payment[]>(`${API_ROOT}/payments`); }
   customerPayments(customerId: number) {
     return this.http.get<Payment[]>(`${API_ROOT}/payments/customer/${customerId}`);
   }

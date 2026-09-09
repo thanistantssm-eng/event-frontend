@@ -119,7 +119,7 @@
             <label class="check"
               ><input type="checkbox" [checked]="remember()" (change)="remember.set(!remember())" />
               Remember me</label
-            ><a routerLink="/reset-password">Forgot Password?</a>
+            >@if (!isAdminEntry) { <a routerLink="/reset-password">Forgot Password?</a> }
           </div>
         }
         @if (mode === 'login' && loginStage() === 'otp') {
@@ -152,20 +152,7 @@
           <p class="auth-message">{{ message() }}</p>
         }
       </form>
-      <div class="divider"><i></i><span>or continue with</span><i></i></div>
-      <div class="social">
-        <button type="button" aria-label="Continue with Google" (click)="socialLogin('Google')">
-          G</button
-        ><button type="button" aria-label="Continue with Apple" (click)="socialLogin('Apple')">
-          ●</button
-        ><button
-          type="button"
-          aria-label="Continue with Microsoft"
-          (click)="socialLogin('Microsoft')"
-        >
-          <i></i><i></i><i></i><i></i>
-        </button>
-      </div>
+      @if (!isAdminEntry) {
       <p class="switch">
         {{
           mode === 'login'
@@ -179,6 +166,7 @@
         }}</a>
       </p>
       <a class="back" routerLink="/">← Back to Eventora</a>
+      }
     </article>
   </section>
 </main>

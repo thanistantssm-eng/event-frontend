@@ -5,7 +5,7 @@ import { NotFound } from './pages/not-found/not-found';
 import { Portal } from './pages/portal/portal';
 import { Management } from './pages/management/management';
 import { PublicPages } from './pages/public-pages/public-pages';
-import { adminGuard, customerGuard, organizerGuard } from './core/auth.guard';
+import { adminGuard, customerGuard, organizerGuard, publicEntryGuard } from './core/auth.guard';
 
 const organizerPaths = [
   'organizer',
@@ -28,6 +28,7 @@ const organizerPaths = [
   'organizer/events/:id/bookings',
   'organizer/events/:id/reports',
   'organizer/events/:id/poster-qr',
+  'organizer/bookings',
   'organizer/approvals',
   'organizer/notifications',
   'organizer/reports',
@@ -44,9 +45,12 @@ const adminPaths = [
   'admin/properties/:id/edit',
   'admin/organizers',
   'admin/organizers/:id',
+  'admin/users',
   'admin/events',
   'admin/events/create',
   'admin/events/:id/layout',
+  'admin/events/:id/seats',
+  'admin/events/:id/ticket-pricing',
   'admin/events/:id',
   'admin/approvals',
   'admin/approvals/:id',
@@ -62,18 +66,19 @@ const adminPaths = [
 ];
 
 export const routes: Routes = [
-  { path: '', component: Landing, title: 'Eventora | Events • Tickets • Parking' },
-  { path: 'login', component: Auth, title: 'Login | Event Parking Reservation System' },
-  { path: 'register', component: Auth, title: 'Create Account | Event Parking' },
-  { path: 'forgot-password', component: Auth, title: 'Forgot Password | Event Parking' },
-  { path: 'reset-password', component: Auth, title: 'Reset Password | Event Parking' },
-  { path: 'events', component: PublicPages, title: 'Discover Events | Event Parking' },
-  { path: 'events/:id', component: PublicPages, title: 'Event Details | Event Parking' },
-  { path: 'about', component: PublicPages, title: 'About | Event Parking' },
-  { path: 'contact', component: PublicPages, title: 'Contact | Event Parking' },
-  { path: 'how-it-works', component: PublicPages, title: 'How It Works | Event Parking' },
-  { path: 'parking', component: PublicPages, title: 'Parking | Event Parking' },
-  { path: 'faq', component: PublicPages, title: 'FAQ | Event Parking' },
+  { path: '', component: Landing, canActivate: [publicEntryGuard], title: 'Eventora | Events • Tickets • Parking' },
+  { path: 'login', component: Auth, canActivate: [publicEntryGuard], title: 'Login | Event Parking Reservation System' },
+  { path: 'admin/login', component: Auth, title: 'Admin Login | Event Parking Reservation System' },
+  { path: 'register', component: Auth, canActivate: [publicEntryGuard], title: 'Create Account | Event Parking' },
+  { path: 'forgot-password', component: Auth, canActivate: [publicEntryGuard], title: 'Forgot Password | Event Parking' },
+  { path: 'reset-password', component: Auth, canActivate: [publicEntryGuard], title: 'Reset Password | Event Parking' },
+  { path: 'events', component: PublicPages, canActivate: [publicEntryGuard], title: 'Discover Events | Event Parking' },
+  { path: 'events/:id', component: PublicPages, canActivate: [publicEntryGuard], title: 'Event Details | Event Parking' },
+  { path: 'about', component: PublicPages, canActivate: [publicEntryGuard], title: 'About | Event Parking' },
+  { path: 'contact', component: PublicPages, canActivate: [publicEntryGuard], title: 'Contact | Event Parking' },
+  { path: 'how-it-works', component: PublicPages, canActivate: [publicEntryGuard], title: 'How It Works | Event Parking' },
+  { path: 'parking', component: PublicPages, canActivate: [publicEntryGuard], title: 'Parking | Event Parking' },
+  { path: 'faq', component: PublicPages, canActivate: [publicEntryGuard], title: 'FAQ | Event Parking' },
 
   // Existing customer flow kept intact.
   {
@@ -87,30 +92,6 @@ export const routes: Routes = [
     component: Portal,
     canActivate: [customerGuard],
     title: 'Discover Events | Event Parking',
-  },
-  {
-    path: 'app/events/summer',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Summer Music Fest | Event Parking',
-  },
-  {
-    path: 'app/events/summer/tickets',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Select Tickets | Event Parking',
-  },
-  {
-    path: 'app/events/summer/seats',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Select Seats | Event Parking',
-  },
-  {
-    path: 'app/events/summer/parking',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Select Parking | Event Parking',
   },
   {
     path: 'app/checkout',
@@ -135,18 +116,6 @@ export const routes: Routes = [
     component: Portal,
     canActivate: [customerGuard],
     title: 'My Bookings | Event Parking',
-  },
-  {
-    path: 'app/bookings/summer',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Booking Details | Event Parking',
-  },
-  {
-    path: 'app/ticket/summer',
-    component: Portal,
-    canActivate: [customerGuard],
-    title: 'Your Ticket | Event Parking',
   },
   {
     path: 'app/parking',

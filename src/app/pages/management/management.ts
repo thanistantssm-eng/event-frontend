@@ -4,24 +4,31 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, forkJoin } from 'rxjs';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import {
   AdminDashboard,
   AdminReport,
   Approval,
+  Booking,
   EventCategory,
   EventRecord,
   Organizer,
   OrganizerDashboard,
   OrganizerTicketSales,
   ParkingArea,
+  ParkingLayout,
+  Payment,
   Property,
+  Seat,
+  TicketType,
+  UserNotification,
   User,
   Venue,
 } from '../../core/api.models';
 
 type Role = 'organizer' | 'admin';
 type RowStatus =
-  'Approved' | 'Pending' | 'Draft' | 'Rejected' | 'Confirmed' | 'Paid' | 'Active' | 'Inactive';
+  'Published' | 'Approved' | 'Pending' | 'Draft' | 'Rejected' | 'Confirmed' | 'Paid' | 'Active' | 'Inactive';
 
 type EventRow = {
   id: string;
@@ -78,8 +85,37 @@ export class Management {
   protected readonly organizerDashboard = signal<OrganizerDashboard | null>(null);
   protected readonly adminReport = signal<AdminReport | null>(null);
   protected readonly ticketSales = signal<OrganizerTicketSales | null>(null);
+  protected readonly bookings = signal<Booking[]>([]);
+  protected readonly payments = signal<Payment[]>([]);
+  protected readonly apiNotifications = signal<UserNotification[]>([]);
+  protected readonly organizerProfile = signal<Organizer | null>(null);
+  protected readonly eventTickets = signal<TicketType[]>([]);
+  protected readonly eventSeats = signal<Seat[]>([]);
+  protected readonly eventParking = signal<ParkingLayout | null>(null);
   protected readonly selectedApprovalId = signal<number | null>(null);
   protected readonly selectedCategoryId = signal<number | null>(null);
+  protected readonly eventForm = {
+    organizerId: 0,
+    name: '',
+    description: '',
+    eventType: 'NonSeatBased',
+    venueId: 0,
+    eventCategoryId: 0,
+    startDateTime: '',
+    endDateTime: '',
+    ticketPrice: 0,
+    posterUrl: '',
+  };
+  protected readonly propertyForm = { name: '', address: '', city: '', description: '' };
+  protected readonly categoryForm = { name: '', description: '' };
+  protected readonly ticketForm = { name: '', description: '', price: 0, quantity: 1 };
+  protected readonly seatForm = {
+    seatNumber: '',
+    rowLabel: '',
+    columnNumber: 1,
+    priceOverride: null as number | null,
+  };
+  protected readonly parkingForm = { parkingAreaId: 0, allocatedSlotCount: 1, parkingFee: 0 };
 
   private readonly eventRows = signal<EventRow[]>([]);
   protected get organizerEvents(): EventRow[] {
@@ -100,6 +136,7 @@ export class Management {
     ['Dashboard', '/admin/dashboard', '⌂'],
     ['Properties', '/admin/properties', '▥'],
     ['Organizers', '/admin/organizers', '♙'],
+    ['Users', '/admin/users', '♟'],
     ['Events', '/admin/events', '▣'],
     ['Approvals', '/admin/approvals', '✓'],
     ['Bookings', '/admin/bookings', '◆'],
@@ -115,7 +152,7 @@ export class Management {
     ['My Events', '/organizer/my-events', '▣'],
     ['Create Event', '/organizer/events/create/type', '＋'],
     ['Approvals', '/organizer/approvals', '✓'],
-    ['Bookings', '/organizer/events/summer/bookings', '◆'],
+    ['Bookings', '/organizer/bookings', '◆'],
     ['Reports', '/organizer/reports', '▥'],
     ['Notifications', '/organizer/notifications', '♢'],
     ['Profile', '/organizer/profile', '♙'],
@@ -125,9 +162,11 @@ export class Management {
   constructor(
     protected readonly router: Router,
     private readonly api: ApiService,
+    protected readonly auth: AuthService,
   ) {
     this.sync(this.router.url);
     this.loadData();
+    this.loadRouteEntity(this.router.url);
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => {
@@ -180,6 +219,7 @@ export class Management {
       else if (clean.endsWith('/poster-qr')) this.view.set('poster-qr');
       else if (clean.endsWith('/edit')) this.view.set('event-edit');
       else if (clean === 'organizer/approvals') this.view.set('approvals');
+      else if (clean === 'organizer/bookings') this.view.set('event-bookings');
       else if (clean === 'organizer/notifications') this.view.set('notifications');
       else if (clean === 'organizer/reports') this.view.set('reports');
       else if (clean === 'organizer/profile') this.view.set('profile');
@@ -194,9 +234,12 @@ export class Management {
         this.view.set('property-form');
       else if (/^admin\/properties\/[^/]+$/.test(clean)) this.view.set('property-detail');
       else if (clean === 'admin/organizers') this.view.set('organizers');
+      else if (clean === 'admin/users') this.view.set('users');
       else if (/^admin\/organizers\/[^/]+$/.test(clean)) this.view.set('organizer-detail');
       else if (clean === 'admin/events') this.view.set('events');
       else if (clean === 'admin/events/create') this.view.set('admin-event-form');
+      else if (clean.endsWith('/seats') && clean.startsWith('admin/events/')) this.view.set('seat-manage');
+      else if (clean.endsWith('/ticket-pricing') && clean.startsWith('admin/events/')) this.view.set('pricing-manage');
       else if (/^admin\/events\/[^/]+\/layout$/.test(clean)) this.view.set('admin-layout');
       else if (/^admin\/events\/[^/]+$/.test(clean)) this.view.set('admin-event-detail');
       else if (clean === 'admin/approvals') this.view.set('admin-approvals');
@@ -368,12 +411,185 @@ export class Management {
     return this.eventRows().filter((event) => event.categoryId === categoryId).length;
   }
 
+  protected selectedEvent(): EventRow | undefined {
+    const parts = this.router.url.split('?')[0].split('/').filter(Boolean);
+    const eventIndex = parts.indexOf('events');
+    const id = eventIndex >= 0 ? Number(parts[eventIndex + 1]) : NaN;
+    return this.eventRows().find((event) => event.backendId === id);
+  }
+
+  protected selectedProperty(): Property | undefined {
+    const parts = this.router.url.split('?')[0].split('/').filter(Boolean);
+    const id = Number(parts.at(parts.at(-1) === 'edit' ? -2 : -1));
+    return this.properties().find((property) => property.id === id);
+  }
+
+  protected createEvent(): void {
+    if ((this.role() === 'admin' && !this.eventForm.organizerId) || !this.eventForm.name || !this.eventForm.venueId || !this.eventForm.eventCategoryId || !this.eventForm.startDateTime || !this.eventForm.endDateTime) {
+      this.flash('Complete all required event fields.');
+      return;
+    }
+    const payload = {
+      name: this.eventForm.name.trim(),
+      description: this.eventForm.description.trim(),
+      eventType: this.eventForm.eventType,
+      venueId: Number(this.eventForm.venueId),
+      eventCategoryId: Number(this.eventForm.eventCategoryId),
+      startDateTime: new Date(this.eventForm.startDateTime).toISOString(),
+      endDateTime: new Date(this.eventForm.endDateTime).toISOString(),
+      ticketPrice: Number(this.eventForm.ticketPrice),
+      posterUrl: this.eventForm.posterUrl.trim() || null,
+    };
+    const request = this.role() === 'admin'
+      ? this.api.createEventForOrganizer(Number(this.eventForm.organizerId), payload)
+      : this.api.createEvent(payload);
+    request.subscribe({
+      next: () => {
+        this.flash('Event created as a draft.');
+        this.go(this.role() === 'admin' ? '/admin/events' : '/organizer/my-events');
+        this.loadData();
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected createProperty(): void {
+    if (!this.propertyForm.name.trim() || !this.propertyForm.address.trim()) {
+      this.flash('Property name and address are required.');
+      return;
+    }
+    this.api.createProperty(this.propertyForm).subscribe({
+      next: (property) => {
+        this.properties.update((items) => [property, ...items]);
+        this.flash('Property created.');
+        this.go('/admin/properties');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected createCategory(): void {
+    if (!this.categoryForm.name.trim()) {
+      this.flash('Category name is required.');
+      return;
+    }
+    this.api.createCategory(this.categoryForm).subscribe({
+      next: (category) => {
+        this.categories.update((items) => [category, ...items]);
+        this.categoryForm.name = '';
+        this.categoryForm.description = '';
+        this.flash('Category created.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected toggleUser(user: User): void {
+    this.api.setUserStatus(user.id, !user.isActive).subscribe({
+      next: (updated) => {
+        this.users.update((items) => items.map((item) => item.id === updated.id ? updated : item));
+        this.flash(`User ${updated.isActive ? 'activated' : 'deactivated'}.`);
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected publish(event: EventRow): void {
+    this.api.publishEvent(event.backendId).subscribe({
+      next: () => { this.flash('Event published.'); this.loadData(); },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected markAllNotificationsRead(): void {
+    this.api.markAllNotificationsRead().subscribe({
+      next: () => {
+        this.apiNotifications.update((items) => items.map((item) => ({ ...item, isRead: true })));
+        this.flash('All notifications marked as read.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected addTicket(): void {
+    const event = this.selectedEvent();
+    if (!event || !this.ticketForm.name.trim() || this.ticketForm.quantity < 1) {
+      this.flash('Ticket name and a positive quantity are required.');
+      return;
+    }
+    this.api.createTicket(event.backendId, {
+      name: this.ticketForm.name.trim(),
+      description: this.ticketForm.description.trim() || null,
+      price: Number(this.ticketForm.price),
+      quantity: Number(this.ticketForm.quantity),
+    }).subscribe({
+      next: (ticket) => {
+        this.eventTickets.update((items) => [...items, ticket]);
+        this.ticketForm.name = '';
+        this.ticketForm.description = '';
+        this.flash('Ticket type added.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected addSeat(): void {
+    const event = this.selectedEvent();
+    if (!event || !this.seatForm.seatNumber.trim()) {
+      this.flash('Seat number is required.');
+      return;
+    }
+    this.api.createSeat(event.backendId, {
+      seatNumber: this.seatForm.seatNumber.trim(),
+      rowLabel: this.seatForm.rowLabel.trim() || null,
+      columnNumber: Number(this.seatForm.columnNumber),
+      priceOverride: this.seatForm.priceOverride,
+    }).subscribe({
+      next: (seat) => {
+        this.eventSeats.update((items) => [...items, seat]);
+        this.seatForm.seatNumber = '';
+        this.flash('Seat added.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected addParkingAllocation(): void {
+    const event = this.selectedEvent();
+    if (!event || !this.parkingForm.parkingAreaId || this.parkingForm.allocatedSlotCount < 1) {
+      this.flash('Select a parking area and slot count.');
+      return;
+    }
+    this.api.allocateParking(event.backendId, {
+      parkingAreaId: Number(this.parkingForm.parkingAreaId),
+      allocatedSlotCount: Number(this.parkingForm.allocatedSlotCount),
+      parkingFee: Number(this.parkingForm.parkingFee),
+    }).subscribe({
+      next: () => {
+        this.flash('Parking allocation added.');
+        this.loadRouteEntity(this.router.url);
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
   private loadData(): void {
     this.loading.set(true);
     forkJoin({ events: this.api.events(), venues: this.api.venues() }).subscribe({
       next: ({ events, venues }) => {
         this.venues.set(venues);
-        this.eventRows.set(events.map((event, index) => this.toEventRow(event, venues, index)));
+        const organizerId = this.auth.session()?.organizerId;
+        const visibleEvents = this.role() === 'organizer' && organizerId
+          ? events.filter((event) => event.organizerId === organizerId)
+          : events;
+        this.eventRows.set(visibleEvents.map((event, index) => this.toEventRow(event, venues, index)));
+        if (this.role() === 'organizer') {
+          const requests = visibleEvents.map((event) => this.api.eventBookings(event.id));
+          if (requests.length) forkJoin(requests).subscribe({
+            next: (groups) => this.bookings.set(groups.flat()),
+            error: (error) => this.apiError.set(apiErrorMessage(error)),
+          });
+        }
         this.loading.set(false);
       },
       error: (error) => {
@@ -392,6 +608,9 @@ export class Management {
         users: this.api.users(),
         parkingAreas: this.api.parkingAreas(),
         report: this.api.adminReport(),
+        bookings: this.api.allBookings(),
+        payments: this.api.allPayments(),
+        notifications: this.api.notifications(),
       }).subscribe({
         next: (data) => {
           this.adminDashboard.set(data.dashboard);
@@ -402,6 +621,9 @@ export class Management {
           this.users.set(data.users);
           this.parkingAreas.set(data.parkingAreas);
           this.adminReport.set(data.report);
+          this.bookings.set(data.bookings);
+          this.payments.set(data.payments);
+          this.apiNotifications.set(data.notifications);
         },
         error: (error) => this.apiError.set(apiErrorMessage(error)),
       });
@@ -409,26 +631,50 @@ export class Management {
       forkJoin({
         dashboard: this.api.organizerDashboard(),
         sales: this.api.organizerTicketSales(),
+        profile: this.api.organizerProfile(),
+        notifications: this.api.notifications(),
+        approvals: this.api.myApprovals(),
       }).subscribe({
-        next: ({ dashboard, sales }) => {
+        next: ({ dashboard, sales, profile, notifications, approvals }) => {
           this.organizerDashboard.set(dashboard);
           this.ticketSales.set(sales);
+          this.organizerProfile.set(profile);
+          this.apiNotifications.set(notifications);
+          this.approvals.set(approvals);
         },
         error: (error) => this.apiError.set(apiErrorMessage(error)),
       });
     }
   }
 
-  private loadRouteEntity(_url: string): void {
-    // List data is shared between the role pages; detail endpoints are exposed by ApiService.
+  private loadRouteEntity(url: string): void {
+    const clean = url.split('?')[0];
+    const parts = clean.split('/').filter(Boolean);
+    const eventIndex = parts.indexOf('events');
+    const eventId = eventIndex >= 0 ? Number(parts[eventIndex + 1]) : NaN;
+    if (!Number.isFinite(eventId)) return;
+    forkJoin({
+      tickets: this.api.tickets(eventId),
+      seats: this.api.seats(eventId),
+      parking: this.api.eventParkingLayout(eventId),
+    }).subscribe({
+      next: ({ tickets, seats, parking }) => {
+        this.eventTickets.set(tickets);
+        this.eventSeats.set(seats);
+        this.eventParking.set(parking);
+      },
+      error: (error) => this.apiError.set(apiErrorMessage(error)),
+    });
   }
 
   private toEventRow(event: EventRecord, venues: Venue[], index: number): EventRow {
     const start = new Date(event.startDateTime);
     const sales = this.ticketSales()?.events.find((item) => item.eventId === event.id);
     const status: RowStatus =
-      event.status === 'Published' || event.status === 'Approved'
-        ? 'Approved'
+      event.status === 'Published'
+        ? 'Published'
+        : event.status === 'Approved'
+          ? 'Approved'
         : event.status === 'PendingApproval'
           ? 'Pending'
           : event.status === 'Rejected'

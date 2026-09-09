@@ -23,3 +23,12 @@ export const authGuard = roleGuard();
 export const customerGuard = roleGuard('Customer');
 export const organizerGuard = roleGuard('Organizer');
 export const adminGuard = roleGuard('Admin');
+
+export const publicEntryGuard: CanActivateFn = () => {
+  if (typeof window === 'undefined' || window.location.port !== '4300') return true;
+  const router = inject(Router);
+  const auth = inject(AuthService);
+  return router.createUrlTree([
+    auth.isAuthenticated() && auth.role() === 'Admin' ? '/admin/dashboard' : '/admin/login',
+  ]);
+};

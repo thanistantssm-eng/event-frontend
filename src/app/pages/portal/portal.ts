@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ViewEncapsulation, computed, effect, signal } from '@angular/core';
+import { Component, ViewEncapsulation, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, forkJoin, of, switchMap } from 'rxjs';
@@ -52,14 +52,6 @@ const emptyEvent: EventItem = {
   description: '',
 };
 
-const bookingState = {
-  ticket: 'premium',
-  seat: 'A2',
-  parking: 'B27',
-  payment: 'card',
-  promoApplied: false,
-};
-
 @Component({
   selector: 'app-portal',
   standalone: true,
@@ -76,7 +68,7 @@ export class Portal {
   protected readonly loading = signal(false);
   protected readonly apiError = signal('');
   protected readonly view = signal('dashboard');
-  protected readonly activeEventId = signal('summer');
+  protected readonly activeEventId = signal('');
   protected readonly detailTab = signal<'about' | 'venue' | 'gallery'>('about');
   protected readonly bookingTab = signal<'upcoming' | 'completed' | 'cancelled'>('upcoming');
   protected readonly parkingFilter = signal<'all' | 'active' | 'upcoming'>('all');
@@ -88,11 +80,10 @@ export class Portal {
   );
   protected readonly query = signal('');
   protected readonly category = signal('All');
-  protected readonly favoriteIds = signal(new Set<string>(['summer']));
-  protected readonly selectedTicket = signal(bookingState.ticket);
-  protected readonly selectedSeat = signal(bookingState.seat);
-  protected readonly selectedParking = signal(bookingState.parking);
-  protected readonly selectedPayment = signal(bookingState.payment);
+  protected readonly selectedTicket = signal('');
+  protected readonly selectedSeat = signal('');
+  protected readonly selectedParking = signal('');
+  protected readonly selectedPayment = signal('Card');
   protected readonly ticketTypes = signal<TicketType[]>([]);
   protected readonly availableSeats = signal<Seat[]>([]);
   protected readonly availableParking = signal<ParkingSlot[]>([]);
@@ -110,21 +101,9 @@ export class Portal {
   protected readonly selectedParkingId = signal<number | null>(null);
   protected readonly paymentOtp = signal('');
   protected readonly awaitingPaymentOtp = signal(false);
-  protected readonly promo = signal('');
-  protected readonly promoApplied = signal(bookingState.promoApplied);
-  protected readonly cardNumber = signal('');
-  protected readonly expiry = signal('');
-  protected readonly cvv = signal('');
-  protected readonly notifications = signal<Record<string, boolean>>({
-    booking: true,
-    payment: true,
-    event: true,
-    parking: true,
-    ticket: true,
-    offers: false,
-  });
 
   private readonly eventRows = signal<EventItem[]>([]);
+  private loadedBundleEventId: number | null = null;
   protected get events(): EventItem[] {
     return this.eventRows();
   }
@@ -140,6 +119,14 @@ export class Portal {
   });
   protected readonly activeEvent = computed(
     () => this.events.find((event) => event.id === this.activeEventId()) ?? this.events[0] ?? emptyEvent,
+    );
+  protected readonly eventCategories = computed(() => [...new Set(this.events.map((event) => event.category))]);
+  protected readonly selectedTicketType = computed(() =>
+    this.ticketTypes().find((ticket) => ticket.id === this.selectedTicketId()),
+  );
+  protected get selectedTicketHold(): boolean { return !!this.selectedTicketId(); }
+  protected readonly hasParkingReservations = computed(() =>
+    this.customerBookings().some((booking) => !!booking.parkingSlot),
   );
 
   protected readonly basePrice = computed(
@@ -151,10 +138,7 @@ export class Portal {
   protected readonly parkingPrice = computed(
     () => this.availableParking().find((slot) => slot.id === this.selectedParkingId())?.parkingFee ?? 0,
   );
-  protected readonly discount = computed(() => (this.promoApplied() ? 300 : 0));
-  protected readonly total = computed(
-    () => this.basePrice() + this.parkingPrice() + 106 - this.discount(),
-  );
+  protected readonly total = computed(() => this.basePrice() + this.parkingPrice());
 
   protected readonly seatRows = computed(() => {
     const groups = new Map<string, Seat[]>();
@@ -168,23 +152,8 @@ export class Portal {
   constructor(
     private readonly router: Router,
     private readonly api: ApiService,
-    private readonly auth: AuthService,
+    protected readonly auth: AuthService,
   ) {
-    try {
-      const saved = JSON.parse(localStorage.getItem('eventora-booking') || '{}');
-      const savedFavorites = JSON.parse(localStorage.getItem('eventora-favorites') || '[]');
-      if (Array.isArray(savedFavorites))
-        this.favoriteIds.set(
-          new Set(savedFavorites.filter((id): id is string => typeof id === 'string')),
-        );
-      if (saved.ticket) this.selectedTicket.set(saved.ticket);
-      if (saved.seat) this.selectedSeat.set(saved.seat);
-      if (typeof saved.parking === 'string') this.selectedParking.set(saved.parking);
-      if (saved.payment) this.selectedPayment.set(saved.payment);
-      if (typeof saved.promoApplied === 'boolean') this.promoApplied.set(saved.promoApplied);
-    } catch {
-      /* keep demo defaults */
-    }
     this.syncView(this.router.url);
     this.loadInitialData();
     this.loadRouteData(this.router.url);
@@ -196,25 +165,6 @@ export class Portal {
         this.sidebarOpen.set(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-    effect(() => {
-      try {
-        localStorage.setItem('eventora-favorites', JSON.stringify([...this.favoriteIds()]));
-      } catch {
-        /* preview environments may block storage */
-      }
-    });
-    effect(() => {
-      bookingState.ticket = this.selectedTicket();
-      bookingState.seat = this.selectedSeat();
-      bookingState.parking = this.selectedParking();
-      bookingState.payment = this.selectedPayment();
-      bookingState.promoApplied = this.promoApplied();
-      try {
-        localStorage.setItem('eventora-booking', JSON.stringify(bookingState));
-      } catch {
-        /* preview environments may block storage */
-      }
-    });
   }
 
   private syncView(url: string): void {
@@ -222,26 +172,26 @@ export class Portal {
     if (clean.startsWith('admin')) this.view.set('admin');
     else if (clean.startsWith('organizer')) this.view.set('organizer');
     else if (clean.startsWith('customer/booking/tickets/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('tickets');
     } else if (clean.startsWith('customer/booking/seats/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('seats');
     } else if (clean.startsWith('customer/booking/parking/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('parking-select');
     } else if (clean.startsWith('customer/booking/summary/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('checkout');
     } else if (clean.startsWith('customer/booking/payment/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('payment');
     } else if (clean.startsWith('customer/booking/success/')) this.view.set('confirmed');
     else if (clean.startsWith('customer/booking/ticket/')) this.view.set('ticket');
     else if (clean === 'customer/dashboard') this.view.set('dashboard');
     else if (clean === 'customer/events') this.view.set('events');
     else if (clean.startsWith('customer/events/')) {
-      this.activeEventId.set(clean.split('/').at(-1) || 'summer');
+      this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('event-detail');
     } else if (clean === 'customer/bookings') this.view.set('bookings');
     else if (clean.startsWith('customer/bookings/')) this.view.set('booking-detail');
@@ -254,17 +204,11 @@ export class Portal {
     else if (clean === 'customer/profile') this.view.set('profile');
     else if (clean === 'customer/support') this.view.set('support');
     else if (clean === 'customer/settings') this.view.set('settings');
-    else if (clean.includes('events/summer/tickets')) this.view.set('tickets');
-    else if (clean.includes('events/summer/seats')) this.view.set('seats');
-    else if (clean.includes('events/summer/parking')) this.view.set('parking-select');
-    else if (clean.includes('events/summer')) this.view.set('event-detail');
     else if (clean === 'app/events') this.view.set('events');
     else if (clean === 'app/checkout') this.view.set('checkout');
     else if (clean === 'app/payment') this.view.set('payment');
     else if (clean === 'app/confirmed') this.view.set('confirmed');
-    else if (clean === 'app/bookings/summer') this.view.set('booking-detail');
     else if (clean === 'app/bookings') this.view.set('bookings');
-    else if (clean === 'app/ticket/summer') this.view.set('ticket');
     else if (clean === 'app/parking') this.view.set('my-parking');
     else if (clean === 'app/payments/receipt') this.view.set('receipt');
     else if (clean === 'app/payments') this.view.set('payments');
@@ -278,16 +222,10 @@ export class Portal {
     const legacyRoutes: Record<string, string> = {
       '/app/dashboard': '/customer/dashboard',
       '/app/events': '/customer/events',
-      '/app/events/summer': `/customer/events/${eventId}`,
-      '/app/events/summer/tickets': `/customer/booking/tickets/${eventId}`,
-      '/app/events/summer/seats': `/customer/booking/seats/${eventId}`,
-      '/app/events/summer/parking': `/customer/booking/parking/${eventId}`,
       '/app/checkout': `/customer/booking/summary/${eventId}`,
       '/app/payment': `/customer/booking/payment/${eventId}`,
       '/app/confirmed': `/customer/booking/success/${bookingId}`,
       '/app/bookings': '/customer/bookings',
-      '/app/bookings/summer': `/customer/bookings/${bookingId}`,
-      '/app/ticket/summer': `/customer/booking/ticket/${bookingId}`,
       '/app/parking': '/customer/parking',
       '/app/payments': '/customer/payments',
       '/app/payments/receipt': '/customer/payments/receipt',
@@ -303,46 +241,26 @@ export class Portal {
   protected setQuery(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
   }
-  protected toggleFavorite(id: string): void {
-    const next = new Set(this.favoriteIds());
-    next.has(id) ? next.delete(id) : next.add(id);
-    this.favoriteIds.set(next);
-    this.flash(next.has(id) ? 'Added to favorites' : 'Removed from favorites');
-  }
   protected chooseTicket(id: string): void {
-    bookingState.ticket = id;
     this.selectedTicket.set(id);
     const parsed = Number(id);
     this.selectedTicketId.set(Number.isFinite(parsed) ? parsed : null);
   }
   protected chooseSeat(seat: Seat): void {
-    bookingState.seat = seat.seatNumber;
     this.selectedSeat.set(seat.seatNumber);
     this.selectedSeatId.set(seat.id);
   }
   protected chooseParking(slot: ParkingSlot): void {
     const selected = this.selectedParkingId() === slot.id;
-    bookingState.parking = selected ? '' : slot.slotNumber;
-    this.selectedParking.set(bookingState.parking);
+    this.selectedParking.set(selected ? '' : slot.slotNumber);
     this.selectedParkingId.set(selected ? null : slot.id);
   }
   protected clearParking(): void {
-    bookingState.parking = '';
     this.selectedParking.set('');
     this.selectedParkingId.set(null);
   }
   protected choosePayment(method: string): void {
-    bookingState.payment = method;
     this.selectedPayment.set(method);
-  }
-  protected applyPromo(): void {
-    const valid = this.promo().trim().toUpperCase() === 'EVENT300';
-    this.promoApplied.set(valid);
-    bookingState.promoApplied = valid;
-    this.flash(valid ? 'Promo code applied — ₹300 saved' : 'Try code EVENT300');
-  }
-  protected toggleNotification(key: string): void {
-    this.notifications.update((items) => ({ ...items, [key]: !items[key] }));
   }
   protected pay(): void {
     if (this.loading()) return;
@@ -362,7 +280,7 @@ export class Portal {
       return;
     }
     this.loading.set(true);
-    const method = this.selectedPayment().replace(/^./, (letter) => letter.toUpperCase());
+    const method = this.selectedPayment();
     this.api
       .createBooking({
         eventId,
@@ -460,6 +378,14 @@ export class Portal {
       },
       error: (error) => this.flash(apiErrorMessage(error)),
     });
+  }
+  protected openBooking(booking: Booking): void {
+    this.currentBooking.set(booking);
+    this.go(`/customer/bookings/${booking.id}`);
+  }
+  protected beginBooking(event: EventItem): void {
+    this.activeEventId.set(event.id);
+    this.go(`/customer/booking/tickets/${event.id}`);
   }
   protected markRead(notification: UserNotification): void {
     if (notification.isRead) return;
@@ -574,6 +500,15 @@ export class Portal {
   }
 
   private loadEventBundle(eventId: number): void {
+    if (this.loadedBundleEventId !== eventId) {
+      this.loadedBundleEventId = eventId;
+      this.selectedTicket.set('');
+      this.selectedTicketId.set(null);
+      this.selectedSeat.set('');
+      this.selectedSeatId.set(null);
+      this.selectedParking.set('');
+      this.selectedParkingId.set(null);
+    }
     forkJoin({
       tickets: this.api.tickets(eventId),
       seats: this.api.seats(eventId),
@@ -583,7 +518,10 @@ export class Portal {
         this.ticketTypes.set(tickets.filter((item) => item.isActive));
         this.availableSeats.set(seats.filter((item) => item.isActive));
         this.availableParking.set(parking.filter((item) => item.isActive));
-        if (!this.selectedTicketId() && tickets[0]) this.chooseTicket(String(tickets[0].id));
+        const activeTickets = tickets.filter((item) => item.isActive);
+        if (!activeTickets.some((ticket) => ticket.id === this.selectedTicketId()) && activeTickets[0]) {
+          this.chooseTicket(String(activeTickets[0].id));
+        }
       },
       error: (error) => this.apiError.set(apiErrorMessage(error)),
     });

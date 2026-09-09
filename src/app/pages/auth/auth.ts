@@ -24,6 +24,8 @@ export class Auth {
   protected readonly loading = signal(false);
   protected readonly maskedEmail = signal('');
   protected readonly roleLabel: 'Customer' | 'Organizer' | 'Administrator';
+  protected readonly isAdminEntry: boolean;
+  private readonly returnUrl: string | null;
   private challengeId = '';
   protected name = '';
   protected email = '';
@@ -35,16 +37,19 @@ export class Auth {
     private readonly router: Router,
     private readonly auth: AuthService,
   ) {
+    const requestedReturnUrl = this.router.parseUrl(router.url).queryParams['returnUrl'];
+    this.returnUrl = typeof requestedReturnUrl === 'string' ? requestedReturnUrl : null;
     this.mode = router.url.includes('register')
       ? 'register'
       : router.url.includes('reset') || router.url.includes('forgot-password')
         ? 'reset'
         : 'login';
-    this.loginTarget = router.url.includes('role=admin')
+    this.loginTarget = router.url.startsWith('/admin/login') || router.url.includes('role=admin')
       ? '/admin/dashboard'
       : router.url.includes('role=organizer')
         ? '/organizer/dashboard'
         : '/customer/dashboard';
+    this.isAdminEntry = this.loginTarget.startsWith('/admin');
     this.roleLabel = this.loginTarget.startsWith('/admin')
       ? 'Administrator'
       : this.loginTarget.startsWith('/organizer')
@@ -53,9 +58,6 @@ export class Auth {
   }
   protected chooseLanguage(): void {
     this.message.set('English is selected. Tamil and Sinhala translations are coming soon.');
-  }
-  protected socialLogin(provider: string): void {
-    this.message.set(`${provider} sign-in is not enabled by the current backend.`);
   }
   protected submit(): void {
     if (this.mode === 'login') {
@@ -154,7 +156,11 @@ export class Auth {
       .subscribe({
         next: (session) => {
           this.message.set('Login successful. Redirecting…');
-          void this.router.navigateByUrl(this.auth.landingRoute(session.role));
+          const rolePrefix = session.role === 'Admin' ? '/admin/' : session.role === 'Organizer' ? '/organizer/' : '/customer/';
+          const destination = this.returnUrl?.startsWith(rolePrefix)
+            ? this.returnUrl
+            : this.auth.landingRoute(session.role);
+          void this.router.navigateByUrl(destination);
         },
         error: (error) => this.message.set(apiErrorMessage(error)),
       });

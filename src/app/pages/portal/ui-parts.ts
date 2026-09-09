@@ -81,29 +81,30 @@ export class Stepper {
     <h2>Order Summary</h2>
     <div class="order-event">
       <div class="event-photo p0"></div>
-      <div><b>Summer Music Fest</b><small>24 May 2026 • 6:00 PM</small></div>
+      <div><b>{{ eventName }}</b><small>{{ eventDate }}</small></div>
     </div>
     <div class="detail-list">
       <p>
-        <span>Ticket</span><b>₹{{ basePrice }}</b>
+        <span>Ticket</span><b>LKR {{ basePrice }}</b>
       </p>
       <p>
-        <span>Seat</span><b>{{ seat }}</b>
+        <span>Seat</span><b>{{ seat || 'Not required' }}</b>
       </p>
       <p>
-        <span>Parking</span><b>{{ parking ? '₹' + parking : '—' }}</b>
+        <span>Parking</span><b>{{ parking ? 'LKR ' + parking : 'Not selected' }}</b>
       </p>
-      <p><span>Taxes & fees</span><b>₹106</b></p>
     </div>
     <div class="grand-total">
-      <span>Total</span><b>₹{{ total }}</b>
+      <span>Total</span><b>LKR {{ total }}</b>
     </div>
     <ng-content></ng-content><small class="centered">🔒 Secure, encrypted checkout</small>
   </aside>`,
 })
 export class OrderSummary {
+  @Input() eventName = 'Selected event';
+  @Input() eventDate = '';
   @Input() basePrice = 0;
   @Input() parking = 0;
   @Input() total = 0;
-  @Input() seat = 'A2';
+  @Input() seat = '';
 }
