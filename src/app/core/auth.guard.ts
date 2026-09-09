@@ -1,35 +1,25 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from './auth.service';
 
-type AppRole = 'customer' | 'organizer' | 'admin';
-
-function currentRole(): AppRole | null {
-  try {
-    return sessionStorage.getItem('eventora-role') as AppRole | null;
-  } catch {
-    return null;
-  }
-}
+type AppRole = 'Customer' | 'Organizer' | 'Admin';
 
 function roleGuard(required?: AppRole): CanActivateFn {
   return () => {
     const router = inject(Router);
-    const role = currentRole();
-    if (!role) return router.createUrlTree(['/login']);
+    const auth = inject(AuthService);
+    const role = auth.role();
+    if (!auth.isAuthenticated() || !role) {
+      return router.createUrlTree(['/login'], { queryParams: { returnUrl: router.url } });
+    }
     if (required && role !== required) {
-      const target =
-        role === 'admin'
-          ? '/admin/dashboard'
-          : role === 'organizer'
-            ? '/organizer/dashboard'
-            : '/customer/dashboard';
-      return router.createUrlTree([target]);
+      return router.createUrlTree([auth.landingRoute(role)]);
     }
     return true;
   };
 }
 
 export const authGuard = roleGuard();
-export const customerGuard = roleGuard('customer');
-export const organizerGuard = roleGuard('organizer');
-export const adminGuard = roleGuard('admin');
+export const customerGuard = roleGuard('Customer');
+export const organizerGuard = roleGuard('Organizer');
+export const adminGuard = roleGuard('Admin');

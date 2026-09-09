@@ -81,21 +81,21 @@
             </section>
             <section class="stats five">
               <article>
-                <i class="purple">▣</i><small>My Events</small><b>12</b
+                <i class="purple">▣</i><small>My Events</small><b>{{ organizerDashboard()?.totalEvents || 0 }}</b
                 ><span>↑ 20% this month</span>
               </article>
               <article>
-                <i class="orange">◷</i><small>Pending Approval</small><b>3</b
+                <i class="orange">◷</i><small>Pending Approval</small><b>{{ organizerDashboard()?.pendingApprovalEvents || 0 }}</b
                 ><span>Needs attention</span>
               </article>
               <article>
-                <i class="green">✓</i><small>Approved Events</small><b>9</b><span>↑ 28%</span>
+                <i class="green">✓</i><small>Published Events</small><b>{{ organizerDashboard()?.publishedEvents || 0 }}</b><span>Live</span>
               </article>
               <article>
-                <i class="blue">◆</i><small>Total Bookings</small><b>842</b><span>↑ 18.3%</span>
+                <i class="blue">◆</i><small>Total Bookings</small><b>{{ organizerDashboard()?.totalBookings || 0 }}</b><span>All events</span>
               </article>
               <article>
-                <i class="purple">₹</i><small>Revenue</small><b>₹8,45,230</b><span>↑ 22.7%</span>
+                <i class="purple">LKR</i><small>Revenue</small><b>{{ organizerDashboard()?.totalRevenue || 0 | number }}</b><span>Completed payments</span>
               </article>
             </section>
             <article class="panel workflow">
@@ -814,6 +814,30 @@
                   </tr>
                 </thead>
                 <tbody>
+                  @for (organizer of organizers(); track organizer.id) {
+                    <tr>
+                      <td>
+                        <div class="person">
+                          <span class="avatar sm">{{ organizer.username[0] }}</span
+                          ><b>{{ organizer.username }}</b>
+                        </div>
+                      </td>
+                      <td>{{ organizer.organizationName }}</td>
+                      <td>{{ eventCountForOrganizer(organizer.id) }}</td>
+                      <td>—</td>
+                      <td>
+                        <span class="status" [class.pending]="!organizer.isVerified">{{ organizer.isVerified ? 'Verified' : 'Pending' }}</span>
+                      </td>
+                      <td><span class="status">{{ organizer.isActive ? 'Active' : 'Inactive' }}</span></td>
+                      <td>
+                        <button class="ghost" (click)="go('/admin/organizers/' + organizer.id)">View</button
+                        ><button class="ghost" (click)="verifyOrganizer(organizer)">{{ organizer.isVerified ? 'Unverify' : 'Verify' }}</button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="7">No organizers found.</td></tr>
+                  }
+                  @if (false) {
                   @for (
                     b of [
                       {
@@ -868,6 +892,7 @@
                       <td><span class="status">Confirmed</span></td>
                     </tr>
                   }
+                  }
                 </tbody>
               </table>
             </article>
@@ -904,17 +929,17 @@
             </section>
             <section class="stats four">
               <article>
-                <i class="green">▣</i><small>Total Events</small><b>128</b><span>↑ 12.5%</span>
+                <i class="green">▣</i><small>Total Events</small><b>{{ adminDashboard()?.totalEvents || 0 }}</b><span>System-wide</span>
               </article>
               <article>
-                <i class="orange">✓</i><small>Pending Approvals</small><b>16</b
+                <i class="orange">✓</i><small>Pending Approvals</small><b>{{ adminDashboard()?.pendingApprovalEvents || 0 }}</b
                 ><span>Needs review</span>
               </article>
               <article>
-                <i class="blue">◆</i><small>Total Bookings</small><b>842</b><span>↑ 18.3%</span>
+                <i class="blue">◆</i><small>Total Bookings</small><b>{{ adminDashboard()?.totalBookings || 0 }}</b><span>All events</span>
               </article>
               <article>
-                <i class="green">₹</i><small>Revenue</small><b>₹8,45,230</b><span>↑ 22.7%</span>
+                <i class="green">LKR</i><small>Revenue</small><b>{{ adminDashboard()?.totalRevenue || 0 | number }}</b><span>Completed payments</span>
               </article>
             </section>
             <section class="dash-grid">
@@ -1057,59 +1082,30 @@
                 </button>
               </div>
               <div class="property-grid">
-                @for (
-                  p of [
-                    {
-                      id: 'soundwave',
-                      n: 'SoundWave Arena',
-                      l: 'Chennai',
-                      c: '8,500',
-                      s: '7,800',
-                      pk: '620',
-                      img: '/assets/concert-hero.webp',
-                    },
-                    {
-                      id: 'city',
-                      n: 'City Convention Centre',
-                      l: 'Bangalore',
-                      c: '4,200',
-                      s: '3,800',
-                      pk: '260',
-                      img: '/assets/event-grid.webp',
-                    },
-                    {
-                      id: 'marina',
-                      n: 'Marina Sports Arena',
-                      l: 'Chennai',
-                      c: '12,000',
-                      s: '10,500',
-                      pk: '1,100',
-                      img: '/assets/smart-parking.webp',
-                    },
-                  ];
-                  track p.id
-                ) {
+                @for (p of properties(); track p.id) {
                   <article>
-                    <img [src]="p.img" />
+                    <img src="/assets/concert-hero.webp" />
                     <div>
-                      <span class="status">Active</span>
-                      <h3>{{ p.n }}</h3>
-                      <p>⌖ {{ p.l }}</p>
+                      <span class="status">{{ p.isActive ? 'Active' : 'Inactive' }}</span>
+                      <h3>{{ p.name }}</h3>
+                      <p>⌖ {{ p.city || p.address }}</p>
                       <div>
                         <span
-                          ><b>{{ p.c }}</b
+                          ><b>{{ capacityForProperty(p.id) | number }}</b
                           >Capacity</span
                         ><span
-                          ><b>{{ p.s }}</b
-                          >Seats</span
+                          ><b>{{ venueCountForProperty(p.id) }}</b
+                          >Venues</span
                         ><span
-                          ><b>{{ p.pk }}</b
-                          >Parking</span
+                          ><b>{{ p.createdAt | date: 'yyyy' }}</b
+                          >Added</span
                         >
                       </div>
                       <button (click)="go('/admin/properties/' + p.id)">View Property</button>
                     </div>
                   </article>
+                } @empty {
+                  <p class="empty">No properties have been added.</p>
                 }
               </div>
             </article>
@@ -2283,6 +2279,31 @@ Premium live music event with reserved seats and optional parking.</textarea>
       </select>
     </div>
     <div class="approval-queue">
+      @for (approval of approvals(); track approval.id) {
+        <article>
+          <img src="/assets/concert-hero.webp" />
+          <div>
+            <span class="status pending">{{ approval.status }}</span>
+            <h3>{{ approval.eventName || 'Event #' + approval.eventId }}</h3>
+            <p>Request #{{ approval.id }}</p>
+            <small>Submitted {{ approval.requestedAt | date: 'medium' }}</small>
+          </div>
+          <div>
+            <button class="ghost" (click)="go('/admin/approvals/' + approval.id)">Review</button
+            ><button
+              class="approve"
+              (click)="openAction(approval.eventName || 'Event', 'approve', approval.id)"
+            >✓</button
+            ><button
+              class="reject"
+              (click)="openAction(approval.eventName || 'Event', 'reject', approval.id)"
+            >×</button>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty">No approval requests are pending.</p>
+      }
+      <div hidden>
       @for (
         a of [
           {
@@ -2324,6 +2345,7 @@ Premium live music event with reserved seats and optional parking.</textarea>
           </div>
         </article>
       }
+      </div>
     </div>
   </article>
 </ng-template>
@@ -2639,6 +2661,20 @@ Premium live music event with reserved seats and optional parking.</textarea>
   </section>
   <article class="panel">
     <div class="category-grid">
+      @for (category of categories(); track category.id) {
+        <article>
+          <i class="purple">◈</i>
+          <div>
+            <h3>{{ category.name }}</h3>
+            <p>{{ eventCountForCategory(category.id) }} events • {{ category.isActive ? 'Active' : 'Inactive' }}</p>
+          </div>
+          <button type="button" [attr.aria-label]="'Edit ' + category.name" (click)="flash(category.name + ' editor opened')">✎</button
+          ><button class="reject" (click)="deleteCategory(category)">×</button>
+        </article>
+      } @empty {
+        <p class="empty">No event categories have been added.</p>
+      }
+      <div hidden>
       @for (
         c of [
           { i: '♫', n: 'Concert', e: 38, c: 'purple' },
@@ -2665,6 +2701,7 @@ Premium live music event with reserved seats and optional parking.</textarea>
           ><button class="reject" (click)="openAction(c.n, 'delete')">×</button>
         </article>
       }
+      </div>
     </div>
   </article>
 </ng-template>

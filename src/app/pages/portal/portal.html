@@ -141,7 +141,7 @@
         @case ('dashboard') {
           <section class="welcome-row">
             <div>
-              <h1>Welcome back, Priya! 👋</h1>
+              <h1>Welcome back, {{ dashboard()?.name || profile()?.name || 'Customer' }}! 👋</h1>
               <p>Here’s what’s happening with your events today.</p>
             </div>
             <button class="primary-btn" (click)="go('/customer/events')">Browse Events →</button>
@@ -180,19 +180,25 @@
               <article class="booking-highlight">
                 <div class="event-photo p0"></div>
                 <div class="booking-info">
-                  <span class="status green-status">● Confirmed</span>
-                  <h3>Summer Music Fest</h3>
-                  <p>📍 Jawaharlal Nehru Stadium, Chennai</p>
-                  <p>▣ Sunday, 24 May 2026　◷ 06:00 PM</p>
+                  @if (customerBookings()[0]; as booking) {
+                  <span class="status green-status">● {{ booking.status }}</span>
+                  <h3>{{ booking.eventName }}</h3>
+                  <p>Booking {{ booking.bookingNumber }}</p>
+                  <p>▣ {{ booking.createdAtUtc | date: 'medium' }}</p>
                   <div class="ticket-mini">
-                    <span>Seat<b>A1, A2</b></span
-                    ><span>Tickets<b>2 Adults</b></span
-                    ><span>Parking<b>Zone B • B27</b></span>
+                    <span>Seat<b>{{ booking.seats.join(', ') || 'General entry' }}</b></span
+                    ><span>Payment<b>{{ booking.paymentStatus }}</b></span
+                    ><span>Parking<b>{{ booking.parkingSlot || 'Not selected' }}</b></span>
                     <div class="mini-qr"></div>
                   </div>
-                  <button class="outline-btn" (click)="go('/customer/bookings/EP-05124')">
+                  <button class="outline-btn" (click)="go('/customer/bookings/' + booking.id)">
                     Event Details →
                   </button>
+                  } @else {
+                    <span class="status">No upcoming booking</span>
+                    <h3>Discover your next event</h3>
+                    <p>Your confirmed bookings will appear here.</p>
+                  }
                 </div>
               </article>
             </div>
@@ -202,8 +208,9 @@
                   <h2>Payment Summary</h2>
                   <button (click)="go('/customer/payments')">View All</button>
                 </div>
-                <p>Last Payment <b>₹14,850</b></p>
-                <small>Paid on 03 May 2026</small><span class="paid">Paid</span>
+                <p>Last Payment <b>LKR {{ customerPayments()[0]?.amount || 0 | number }}</b></p>
+                <small>{{ customerPayments()[0]?.createdAtUtc | date: 'mediumDate' }}</small
+                ><span class="paid">{{ customerPayments()[0]?.status || 'No payments' }}</span>
               </article>
               <article>
                 <div class="section-title">
@@ -211,23 +218,17 @@
                   <button (click)="go('/customer/notifications')">View All</button>
                 </div>
                 <ul class="notification-list">
-                  <li>
-                    <span class="dot purple">◆</span>
-                    <div>
-                      <b>Your booking for AR Rahman Live was confirmed!</b
-                      ><small>2 minutes ago</small>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="dot green">Ⓟ</span>
-                    <div>
-                      <b>Parking slot B27 reserved successfully</b><small>20 minutes ago</small>
-                    </div>
-                  </li>
-                  <li>
-                    <span class="dot orange">●</span>
-                    <div><b>Event starts in 3 days</b><small>1 day ago</small></div>
-                  </li>
+                  @for (notice of apiNotifications().slice(0, 3); track notice.id) {
+                    <li>
+                      <span class="dot purple">◆</span>
+                      <div>
+                        <b>{{ notice.title }}</b
+                        ><small>{{ notice.createdAt || notice.createdAtUtc | date: 'short' }}</small>
+                      </div>
+                    </li>
+                  } @empty {
+                    <li><div><b>No new notifications</b><small>You are all caught up.</small></div></li>
+                  }
                 </ul>
               </article>
             </div>
@@ -431,56 +432,22 @@
               </div>
               <h2>Select Ticket Type & Quantity</h2>
               <div class="ticket-options">
-                @for (
-                  ticket of [
-                    {
-                      id: 'vip',
-                      icon: '♛',
-                      name: 'VIP Pass',
-                      desc: 'Front-row access, VIP lounge and refreshments',
-                      price: 1999,
-                      color: 'orange',
-                    },
-                    {
-                      id: 'premium',
-                      icon: '✦',
-                      name: 'Premium Pass',
-                      desc: 'Premium seating with an excellent stage view',
-                      price: 1499,
-                      color: 'purple',
-                    },
-                    {
-                      id: 'general',
-                      icon: '♙',
-                      name: 'General Pass',
-                      desc: 'General admission area with open seating',
-                      price: 799,
-                      color: 'green',
-                    },
-                    {
-                      id: 'couple',
-                      icon: '♧',
-                      name: 'Couple Pass',
-                      desc: 'Entry for two with reserved paired seating',
-                      price: 2499,
-                      color: 'blue',
-                    },
-                  ];
-                  track ticket.id
-                ) {
+                @for (ticket of ticketTypes(); track ticket.id) {
                   <button
-                    [class.selected]="selectedTicket() === ticket.id"
-                    (click)="chooseTicket(ticket.id)"
+                    [class.selected]="selectedTicketId() === ticket.id"
+                    (click)="chooseTicket(ticket.id.toString())"
                   >
-                    <span class="icon" [class]="ticket.color">{{ ticket.icon }}</span>
+                    <span class="icon orange">✦</span>
                     <div>
                       <h3>{{ ticket.name }}</h3>
-                      <p>{{ ticket.desc }}</p>
-                      <small>Instant confirmation</small>
+                      <p>{{ ticket.description || 'Event admission ticket' }}</p>
+                      <small>{{ ticket.quantity }} remaining</small>
                     </div>
-                    <b>₹{{ ticket.price }}</b
-                    ><i>{{ selectedTicket() === ticket.id ? '✓' : '' }}</i>
+                    <b>LKR {{ ticket.price | number }}</b
+                    ><i>{{ selectedTicketId() === ticket.id ? '✓' : '' }}</i>
                   </button>
+                } @empty {
+                  <p class="empty">No ticket types are available for this event.</p>
                 }
               </div>
             </div>
@@ -509,21 +476,23 @@
               </div>
               <div class="seat-map">
                 <div class="stage">STAGE</div>
-                @for (row of ['A', 'B', 'C', 'D', 'E', 'F', 'G']; track row) {
+                @for (row of seatRows(); track row.label) {
                   <div class="seat-row">
-                    <b>{{ row }}</b>
-                    @for (n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track n) {
+                    <b>{{ row.label }}</b>
+                    @for (seat of row.seats; track seat.id) {
                       <button
-                        [class.vip]="row === 'A' || row === 'B'"
-                        [class.taken]="(n + row.charCodeAt(0)) % 7 === 0"
-                        [class.selected]="selectedSeat() === row + n"
-                        [disabled]="(n + row.charCodeAt(0)) % 7 === 0"
-                        (click)="chooseSeat(row + n)"
+                        [class.vip]="seat.price > activeEvent().price"
+                        [class.taken]="seat.status !== 'Available'"
+                        [class.selected]="selectedSeatId() === seat.id"
+                        [disabled]="seat.status !== 'Available'"
+                        (click)="chooseSeat(seat)"
                       >
-                        {{ n }}
+                        {{ seat.columnNumber || seat.seatNumber }}
                       </button>
                     }
                   </div>
+                } @empty {
+                  <p class="empty">No seat map is configured for this event.</p>
                 }
                 <div class="seat-legend">
                   <span><i class="seat-dot"></i>Available</span
@@ -558,28 +527,21 @@
               <p class="muted">Choose a convenient parking space near the venue.</p>
               <div class="parking-layout">
                 <div class="parking-road">VENUE<br />ACCESS</div>
-                @for (zone of ['A', 'B', 'C']; track zone) {
-                  <section>
-                    <h3>
-                      Zone {{ zone }}
-                      <small>{{
-                        zone === 'B' ? 'Recommended' : zone === 'A' ? 'Closest' : 'Budget'
-                      }}</small>
-                    </h3>
-                    <div>
-                      @for (n of [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]; track n) {
-                        <button
-                          [class.busy]="n % 5 === 0"
-                          [class.selected]="selectedParking() === zone + n"
-                          [disabled]="n % 5 === 0"
-                          (click)="chooseParking(zone + n)"
-                        >
-                          {{ zone }}{{ n }}
-                        </button>
-                      }
-                    </div>
-                  </section>
-                }
+                <section>
+                  <h3>Available parking <small>Optional</small></h3>
+                  <div>
+                    @for (slot of availableParking(); track slot.id) {
+                      <button
+                        [class.busy]="slot.status !== 'Available'"
+                        [class.selected]="selectedParkingId() === slot.id"
+                        [disabled]="slot.status !== 'Available'"
+                        (click)="chooseParking(slot)"
+                      >
+                        {{ slot.slotNumber }}
+                      </button>
+                    }
+                  </div>
+                </section>
                 <div class="seat-legend">
                   <span><i class="seat-dot parking"></i>Available</span
                   ><span><i class="seat-dot selected"></i>Selected</span
@@ -763,6 +725,24 @@
                     <p>You’ll be redirected to your bank’s secure payment page.</p>
                   </div>
                 }
+                @if (awaitingPaymentOtp()) {
+                  <div class="card-form">
+                    <label
+                      >Payment OTP
+                      <div>
+                        <span>⌑</span
+                        ><input
+                          name="paymentOtp"
+                          maxlength="6"
+                          inputmode="numeric"
+                          placeholder="Enter 6-digit OTP"
+                          [ngModel]="paymentOtp()"
+                          (ngModelChange)="paymentOtp.set($event)"
+                        />
+                      </div>
+                    </label>
+                  </div>
+                }
                 <div class="protected">🛡 Your payment information is encrypted and protected.</div>
               </article>
             </div>
@@ -786,7 +766,7 @@
                 <span>Total Amount</span><b>₹{{ total() }}</b>
               </div>
               <button class="primary-btn full pay-button" (click)="pay()">
-                🔒 Pay ₹{{ total() }}</button
+                {{ loading() ? 'Processing…' : awaitingPaymentOtp() ? '✓ Verify Payment OTP' : '🔒 Pay LKR ' + total() }}</button
               ><small class="centered">By paying, you agree to Eventora’s terms.</small>
             </aside>
           </section>
@@ -866,33 +846,28 @@
             </button>
           </div>
           <section class="booking-list">
-            @for (event of events; track event.id) {
+            @for (booking of customerBookings(); track booking.id) {
               <article>
                 <div
                   class="event-thumb"
-                  [style.background-position]="spritePosition(event.image)"
+                  [style.background-position]="spritePosition(booking.eventId % 4)"
                 ></div>
                 <div>
-                  <span class="status" [class.green-status]="event.id !== 'tech'">{{
-                    event.id === 'tech' ? 'Upcoming' : 'Confirmed'
-                  }}</span>
-                  <h2>{{ event.title }}</h2>
-                  <p>▣ {{ event.date }}　◷ {{ event.time }}</p>
-                  <p>📍 {{ event.venue }}</p>
-                  <small>{{ event.format }} • 2 tickets</small>
+                  <span class="status" [class.green-status]="booking.status === 'Confirmed'">{{ booking.status }}</span>
+                  <h2>{{ booking.eventName }}</h2>
+                  <p>▣ {{ booking.createdAtUtc | date: 'medium' }}</p>
+                  <p>Booking {{ booking.bookingNumber }}</p>
+                  <small>{{ booking.seats.length }} seat(s) • {{ booking.paymentStatus }}</small>
                 </div>
                 <div class="booking-price">
-                  <span>Total Paid</span><b>₹{{ event.price + 700 }}</b
-                  ><button
-                    class="primary-btn"
-                    (click)="
-                      event.id === 'summer' ? go('/app/bookings/summer') : flash('Booking opened')
-                    "
-                  >
+                  <span>Total</span><b>LKR {{ booking.totalAmount | number }}</b
+                  ><button class="primary-btn" (click)="go('/customer/bookings/' + booking.id)">
                     View Details →</button
-                  ><button class="text-btn" (click)="download()">Download ticket</button>
+                  ><button class="text-btn" (click)="downloadBooking(booking)">Download ticket</button>
                 </div>
               </article>
+            } @empty {
+              <div class="empty">You do not have any bookings yet.</div>
             }
           </section>
         }
@@ -1163,31 +1138,27 @@
                 </tr>
               </thead>
               <tbody>
-                @for (event of events.concat(events); track $index) {
+                @for (payment of customerPayments(); track payment.id) {
                   <tr>
                     <td>
                       <div class="table-event">
-                        <span
-                          class="tiny-thumb"
-                          [style.background-position]="spritePosition(event.image)"
-                        ></span
-                        ><b>{{ event.title }}</b>
+                        <span class="tiny-thumb"></span
+                        ><b>{{ bookingForPayment(payment)?.eventName || 'Event booking' }}</b>
                       </div>
                     </td>
-                    <td>#TXN-260{{ 124 + $index }}</td>
-                    <td>{{ event.date }}</td>
-                    <td>{{ $index % 2 ? 'UPI' : 'Card •••• 4242' }}</td>
-                    <td>₹{{ event.price + 700 }}</td>
-                    <td><span class="status green-status">Paid</span></td>
+                    <td>{{ payment.transactionReference }}</td>
+                    <td>{{ payment.createdAtUtc | date: 'mediumDate' }}</td>
+                    <td>{{ payment.method }}</td>
+                    <td>LKR {{ payment.amount | number }}</td>
+                    <td><span class="status" [class.green-status]="payment.status === 'Completed'">{{ payment.status }}</span></td>
                     <td>
-                      <button
-                        class="text-btn"
-                        (click)="$index === 0 ? go('/app/payments/receipt') : download('Receipt')"
-                      >
+                      <button class="text-btn" (click)="openReceipt(payment)">
                         View receipt
                       </button>
                     </td>
                   </tr>
+                } @empty {
+                  <tr><td colspan="7">No payments found.</td></tr>
                 }
               </tbody>
             </table>
@@ -1272,7 +1243,7 @@
               <h1>Notifications</h1>
               <p>Stay updated on bookings, payments, reminders and offers.</p>
             </div>
-            <button class="text-btn" (click)="flash('All notifications marked as read')">
+            <button class="text-btn" (click)="markAllRead()">
               Mark all as read
             </button>
           </section>
@@ -1311,55 +1282,18 @@
           </div>
           <section class="notification-page-grid">
             <div class="notifications-feed">
-              @for (
-                item of [
-                  {
-                    icon: '✓',
-                    color: 'green',
-                    title: 'Booking Confirmed',
-                    text: 'Your Summer Music Fest booking has been confirmed.',
-                    time: '2 min ago',
-                  },
-                  {
-                    icon: '◆',
-                    color: 'purple',
-                    title: 'Payment Successful',
-                    text: 'Payment of ₹2,450 was completed successfully.',
-                    time: '20 min ago',
-                  },
-                  {
-                    icon: '▣',
-                    color: 'orange',
-                    title: 'Event Reminder',
-                    text: 'Summer Music Fest starts in 3 days. Get ready!',
-                    time: '1 day ago',
-                  },
-                  {
-                    icon: 'Ⓟ',
-                    color: 'green',
-                    title: 'Parking Slot Reserved',
-                    text: 'Slot B27 is reserved from 4:00 PM on event day.',
-                    time: '1 day ago',
-                  },
-                  {
-                    icon: '✦',
-                    color: 'purple',
-                    title: 'Tickets Ready',
-                    text: 'Your QR ticket is ready to download.',
-                    time: '2 days ago',
-                  },
-                ];
-                track item.title
-              ) {
-                <article>
-                  <span class="metric-icon" [class]="item.color">{{ item.icon }}</span>
+              @for (item of apiNotifications(); track item.id) {
+                <article [class.unread]="!item.isRead">
+                  <span class="metric-icon purple">◆</span>
                   <div>
                     <h3>{{ item.title }}</h3>
-                    <p>{{ item.text }}</p>
-                    <small>{{ item.time }}</small>
+                    <p>{{ item.message }}</p>
+                    <small>{{ item.createdAt || item.createdAtUtc | date: 'medium' }}</small>
                   </div>
-                  <button (click)="flash('Notification archived')">•••</button>
+                  <button (click)="markRead(item)">{{ item.isRead ? '✓' : '○' }}</button>
                 </article>
+              } @empty {
+                <div class="empty">No notifications yet.</div>
               }
             </div>
             <aside class="preferences">

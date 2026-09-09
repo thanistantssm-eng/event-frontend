@@ -2,7 +2,22 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter } from 'rxjs';
+import { filter, forkJoin } from 'rxjs';
+import { ApiService, apiErrorMessage } from '../../core/api.service';
+import {
+  AdminDashboard,
+  AdminReport,
+  Approval,
+  EventCategory,
+  EventRecord,
+  Organizer,
+  OrganizerDashboard,
+  OrganizerTicketSales,
+  ParkingArea,
+  Property,
+  User,
+  Venue,
+} from '../../core/api.models';
 
 type Role = 'organizer' | 'admin';
 type RowStatus =
@@ -10,6 +25,9 @@ type RowStatus =
 
 type EventRow = {
   id: string;
+  backendId: number;
+  organizerId: number;
+  categoryId: number;
   title: string;
   venue: string;
   date: string;
@@ -47,53 +65,26 @@ export class Management {
   protected readonly setupMode = signal<'seat' | 'general'>('seat');
   protected readonly notificationTab = signal('All');
   protected readonly settingsSection = signal('General');
+  protected readonly loading = signal(false);
+  protected readonly apiError = signal('');
+  protected readonly properties = signal<Property[]>([]);
+  protected readonly venues = signal<Venue[]>([]);
+  protected readonly organizers = signal<Organizer[]>([]);
+  protected readonly approvals = signal<Approval[]>([]);
+  protected readonly categories = signal<EventCategory[]>([]);
+  protected readonly users = signal<User[]>([]);
+  protected readonly parkingAreas = signal<ParkingArea[]>([]);
+  protected readonly adminDashboard = signal<AdminDashboard | null>(null);
+  protected readonly organizerDashboard = signal<OrganizerDashboard | null>(null);
+  protected readonly adminReport = signal<AdminReport | null>(null);
+  protected readonly ticketSales = signal<OrganizerTicketSales | null>(null);
+  protected readonly selectedApprovalId = signal<number | null>(null);
+  protected readonly selectedCategoryId = signal<number | null>(null);
 
-  protected readonly organizerEvents: EventRow[] = [
-    {
-      id: 'summer',
-      title: 'Summer Music Fest',
-      venue: 'SoundWave Arena',
-      date: '24 May 2026 • 6:00 PM',
-      type: 'Seat Based',
-      status: 'Approved',
-      bookings: 256,
-      revenue: '₹4,86,400',
-      image: '/assets/concert-hero.webp',
-    },
-    {
-      id: 'food',
-      title: 'Food Carnival 2026',
-      venue: 'Island Grounds',
-      date: '10 Jun 2026 • 4:00 PM',
-      type: 'Non-Seat Based',
-      status: 'Pending',
-      bookings: 184,
-      revenue: '₹2,10,900',
-      image: '/assets/event-grid.webp',
-    },
-    {
-      id: 'tech',
-      title: 'Tech Conference 2026',
-      venue: 'Chennai Trade Centre',
-      date: '18 Jul 2026 • 9:30 AM',
-      type: 'Seat Based',
-      status: 'Draft',
-      bookings: 0,
-      revenue: '₹0',
-      image: '/assets/eventora-event-sprite.png',
-    },
-    {
-      id: 'league',
-      title: 'Football League Final',
-      venue: 'Marina Arena',
-      date: '06 Aug 2026 • 7:00 PM',
-      type: 'Seat Based',
-      status: 'Approved',
-      bookings: 402,
-      revenue: '₹6,42,500',
-      image: '/assets/event-grid.webp',
-    },
-  ];
+  private readonly eventRows = signal<EventRow[]>([]);
+  protected get organizerEvents(): EventRow[] {
+    return this.eventRows();
+  }
 
   protected readonly filteredEvents = computed(() => {
     const q = this.query().toLowerCase().trim();
@@ -131,12 +122,17 @@ export class Management {
     ['Settings', '/organizer/settings', '⚙'],
   ];
 
-  constructor(protected readonly router: Router) {
+  constructor(
+    protected readonly router: Router,
+    private readonly api: ApiService,
+  ) {
     this.sync(this.router.url);
+    this.loadData();
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe((e) => {
         this.sync(e.urlAfterRedirects);
+        this.loadRouteEntity(e.urlAfterRedirects);
         this.sidebarOpen.set(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -231,12 +227,46 @@ export class Management {
     this.toast.set(message);
     window.setTimeout(() => this.toast.set(''), 2200);
   }
-  protected openAction(name: string, mode: 'approve' | 'reject' | 'delete'): void {
+  protected openAction(
+    name: string,
+    mode: 'approve' | 'reject' | 'delete',
+    approvalId?: number,
+  ): void {
     this.selectedName.set(name);
     this.modalMode.set(mode);
+    this.selectedApprovalId.set(approvalId ?? null);
     this.showModal.set(true);
   }
   protected confirmAction(): void {
+    const approvalId = this.selectedApprovalId();
+    if (approvalId && this.modalMode() !== 'delete') {
+      const request = this.modalMode() === 'approve'
+        ? this.api.approve(approvalId)
+        : this.api.reject(approvalId, 'Rejected by administrator');
+      request.subscribe({
+        next: (approval) => {
+          this.approvals.update((items) =>
+            items.map((item) => (item.id === approval.id ? approval : item)),
+          );
+          this.flash(`${this.selectedName()} ${approval.status.toLowerCase()} successfully`);
+          this.showModal.set(false);
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+      return;
+    }
+    const categoryId = this.selectedCategoryId();
+    if (categoryId && this.modalMode() === 'delete') {
+      this.api.deleteCategory(categoryId).subscribe({
+        next: () => {
+          this.categories.update((items) => items.filter((item) => item.id !== categoryId));
+          this.showModal.set(false);
+          this.flash(`${this.selectedName()} removed successfully`);
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+      return;
+    }
     this.flash(
       `${this.selectedName()} ${this.modalMode() === 'approve' ? 'approved' : this.modalMode() === 'reject' ? 'rejected' : 'removed'} successfully`,
     );
@@ -289,5 +319,139 @@ export class Management {
     ];
     const i = Math.max(this.activeWizardStep() - 2, 0);
     this.go(paths[i]);
+  }
+
+  protected verifyOrganizer(organizer: Organizer): void {
+    this.api.setOrganizerVerification(organizer.id, !organizer.isVerified).subscribe({
+      next: (updated) => {
+        this.organizers.update((items) =>
+          items.map((item) => (item.id === updated.id ? updated : item)),
+        );
+        this.flash(updated.isVerified ? 'Organizer verified successfully' : 'Verification removed');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected submitEventForApproval(eventId: number): void {
+    this.api.submitApproval(eventId).subscribe({
+      next: (approval) => {
+        this.approvals.update((items) => [approval, ...items]);
+        this.flash('Event submitted for approval');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected deleteCategory(category: EventCategory): void {
+    this.selectedCategoryId.set(category.id);
+    this.selectedApprovalId.set(null);
+    this.openAction(category.name, 'delete');
+    this.selectedCategoryId.set(category.id);
+  }
+
+  protected venueCountForProperty(propertyId: number): number {
+    return this.venues().filter((venue) => venue.propertyId === propertyId).length;
+  }
+
+  protected capacityForProperty(propertyId: number): number {
+    return this.venues()
+      .filter((venue) => venue.propertyId === propertyId)
+      .reduce((total, venue) => total + venue.capacity, 0);
+  }
+
+  protected eventCountForOrganizer(organizerId: number): number {
+    return this.organizerEvents.filter((event) => event.organizerId === organizerId).length;
+  }
+
+  protected eventCountForCategory(categoryId: number): number {
+    return this.eventRows().filter((event) => event.categoryId === categoryId).length;
+  }
+
+  private loadData(): void {
+    this.loading.set(true);
+    forkJoin({ events: this.api.events(), venues: this.api.venues() }).subscribe({
+      next: ({ events, venues }) => {
+        this.venues.set(venues);
+        this.eventRows.set(events.map((event, index) => this.toEventRow(event, venues, index)));
+        this.loading.set(false);
+      },
+      error: (error) => {
+        this.loading.set(false);
+        this.apiError.set(apiErrorMessage(error));
+      },
+    });
+
+    if (this.role() === 'admin') {
+      forkJoin({
+        dashboard: this.api.adminDashboard(),
+        properties: this.api.properties(),
+        organizers: this.api.organizers(),
+        approvals: this.api.pendingApprovals(),
+        categories: this.api.categories(true),
+        users: this.api.users(),
+        parkingAreas: this.api.parkingAreas(),
+        report: this.api.adminReport(),
+      }).subscribe({
+        next: (data) => {
+          this.adminDashboard.set(data.dashboard);
+          this.properties.set(data.properties);
+          this.organizers.set(data.organizers);
+          this.approvals.set(data.approvals);
+          this.categories.set(data.categories);
+          this.users.set(data.users);
+          this.parkingAreas.set(data.parkingAreas);
+          this.adminReport.set(data.report);
+        },
+        error: (error) => this.apiError.set(apiErrorMessage(error)),
+      });
+    } else {
+      forkJoin({
+        dashboard: this.api.organizerDashboard(),
+        sales: this.api.organizerTicketSales(),
+      }).subscribe({
+        next: ({ dashboard, sales }) => {
+          this.organizerDashboard.set(dashboard);
+          this.ticketSales.set(sales);
+        },
+        error: (error) => this.apiError.set(apiErrorMessage(error)),
+      });
+    }
+  }
+
+  private loadRouteEntity(_url: string): void {
+    // List data is shared between the role pages; detail endpoints are exposed by ApiService.
+  }
+
+  private toEventRow(event: EventRecord, venues: Venue[], index: number): EventRow {
+    const start = new Date(event.startDateTime);
+    const sales = this.ticketSales()?.events.find((item) => item.eventId === event.id);
+    const status: RowStatus =
+      event.status === 'Published' || event.status === 'Approved'
+        ? 'Approved'
+        : event.status === 'PendingApproval'
+          ? 'Pending'
+          : event.status === 'Rejected'
+            ? 'Rejected'
+            : 'Draft';
+    const images = [
+      '/assets/concert-hero.webp',
+      '/assets/event-grid.webp',
+      '/assets/eventora-event-sprite.png',
+    ];
+    return {
+      id: String(event.id),
+      backendId: event.id,
+      organizerId: event.organizerId,
+      categoryId: event.eventCategoryId,
+      title: event.name,
+      venue: venues.find((venue) => venue.id === event.venueId)?.name ?? `Venue #${event.venueId}`,
+      date: start.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
+      type: event.eventType === 'SeatBased' ? 'Seat Based' : 'Non-Seat Based',
+      status,
+      bookings: sales?.confirmedBookings ?? 0,
+      revenue: `LKR ${(sales?.ticketRevenue ?? 0).toLocaleString()}`,
+      image: event.posterUrl || images[index % images.length],
+    };
   }
 }

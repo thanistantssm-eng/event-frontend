@@ -18,7 +18,9 @@
       <p>
         {{
           mode === 'login'
-            ? 'Sign in to continue to your account'
+            ? loginStage() === 'otp'
+              ? 'Complete the secure email verification step'
+              : 'Sign in to continue to your account'
             : mode === 'register'
               ? 'Join Event Parking and get started in minutes.'
               : resetStage() === 'request'
@@ -64,7 +66,7 @@
               /></div
           ></label>
         }
-        @if (mode !== 'register') {
+        @if (mode !== 'register' && !(mode === 'login' && loginStage() === 'otp')) {
           <label
             >Email or Username
             <div>
@@ -76,14 +78,14 @@
               /></div
           ></label>
         }
-        @if (mode === 'reset' && resetStage() === 'change') {
+        @if ((mode === 'reset' && resetStage() === 'change') || (mode === 'login' && loginStage() === 'otp')) {
           <label
-            >Verification Code
+            >{{ mode === 'login' ? 'Login OTP' : 'Verification Code' }}
             <div>
-              <span>⌑</span><input name="code" [(ngModel)]="code" placeholder="6-digit code" /></div
+              <span>⌑</span><input name="code" [(ngModel)]="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" /></div
           ></label>
         }
-        @if (mode !== 'reset' || resetStage() === 'change') {
+        @if ((mode !== 'reset' || resetStage() === 'change') && !(mode === 'login' && loginStage() === 'otp')) {
           <div class="form-two" [class.single]="mode === 'login'">
             <label
               >Password
@@ -112,12 +114,18 @@
             }
           </div>
         }
-        @if (mode === 'login') {
+        @if (mode === 'login' && loginStage() === 'password') {
           <div class="form-options">
             <label class="check"
               ><input type="checkbox" [checked]="remember()" (change)="remember.set(!remember())" />
               Remember me</label
             ><a routerLink="/reset-password">Forgot Password?</a>
+          </div>
+        }
+        @if (mode === 'login' && loginStage() === 'otp') {
+          <div class="form-options">
+            <button type="button" class="back" (click)="restartLogin()">← Change account</button>
+            <button type="button" class="back" (click)="resendLoginOtp()">Resend OTP</button>
           </div>
         }
         @if (mode === 'register') {
@@ -126,10 +134,12 @@
             Policy</label
           >
         }
-        <button class="submit" type="submit">
+        <button class="submit" type="submit" [disabled]="loading()">
           {{
-            mode === 'login'
-              ? 'Sign In'
+            loading()
+              ? 'Please wait…'
+              : mode === 'login'
+                ? loginStage() === 'otp' ? 'Verify & Sign In' : 'Continue with Email'
               : mode === 'register'
                 ? 'Create Account'
                 : resetStage() === 'request'

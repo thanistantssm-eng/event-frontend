@@ -18,7 +18,7 @@ This package continues the uploaded frontend rather than replacing its establish
 - Landing page
 - Login with role-aware redirect
 - Customer registration
-- Forgot password / reset password demo flow
+- Forgot password / reset password guidance (the backend does not currently expose a reset API)
 - 404 page
 - Public Events listing
 - Public Event Details
@@ -99,7 +99,7 @@ The original `/app/...` demo routes remain available for backward compatibility.
 
 ## Reusable UX pieces
 
-- Role guards using `sessionStorage` for the demo frontend
+- JWT authentication interceptor and API-backed role guards
 - Toast feedback in management flows
 - Confirmation modal pattern
 - Reusable status chips / badges
@@ -199,7 +199,7 @@ The original `/app/...` demo routes remain available for backward compatibility.
 - `/admin/notifications`
 - `/admin/settings`
 
-## Demo login routing
+## Login routing
 
 Use the landing page role login links, or open directly:
 
@@ -207,7 +207,7 @@ Use the landing page role login links, or open directly:
 - Organizer: `/login?role=organizer` → `/organizer/dashboard`
 - Admin: `/login?role=admin` → `/admin/dashboard`
 
-The current frontend uses demo/session role state only. Replace this with the real JWT/ASP.NET Core auth service during backend integration.
+Login uses the ASP.NET Core password → email OTP → JWT flow. The API-returned role decides the destination; a query-string role only changes the login page presentation.
 
 ## Run locally
 
@@ -220,13 +220,38 @@ Open `http://localhost:4200`.
 
 ## Framework / build note
 
-The uploaded project already uses Angular `22.1.x`, TypeScript `6.0.x` and npm `11.17.0`. The continuation deliberately keeps that dependency line instead of silently downgrading the existing project to Angular 19.
+The project keeps its existing Angular `22.1.x`, TypeScript `6.0.x` and npm `11.17.0` dependency line. Use a Node version supported by `package-lock.json` (for example a current Node 24 release).
 
-A full Angular build could not be executed in the packaging container because its Node runtime is older than the engine requirement of the current Angular 22.1.7 toolchain. Source-level TypeScript syntax checks were run and no non-module TypeScript diagnostics were found. For local installation/build, use a Node version supported by the package versions in `package-lock.json` (for example a current Node 24 release), then run `npm install` and `npm run build`.
+The integrated source has been verified with both `npm run build` and `npm test -- --watch=false --no-progress`.
 
-## Backend integration note
+## Backend integration
 
-This package is still a frontend/demo-data implementation. Buttons, filters, wizard navigation, approval modals, status interactions and role navigation are wired client-side and are ready to be connected to the ASP.NET Core API through Angular services.
+The UI is connected to the ASP.NET Core API in `EventParkingReservationSystem` (`develop` branch).
+
+- API base URL: edit `public/api-config.js` (default `http://localhost:5118/api`). This file can be replaced during deployment without rebuilding Angular.
+- Authentication follows the backend's password → email OTP → JWT flow. The JWT, expiry, user role, customer ID and organizer ID are stored as one session and attached through an HTTP interceptor.
+- Route guards use the role returned by the API; the role query string is only a visual login entry point and cannot grant access.
+- Public and customer event lists, event tickets, seats, parking slots, booking creation/cancellation, payment OTP, booking/payment history, profile, dashboards and notifications now use live API data.
+- Organizer/admin event lists, dashboards, properties, pending approvals, categories, users, parking areas and reporting data are loaded from the API. Approval actions and organizer verification use the corresponding backend endpoints.
+- `src/app/core/api.service.ts` contains typed methods for every controller endpoint in the current backend, including CRUD and QR/receipt/report endpoints used by later detail/editor screens.
+
+Start the API first:
+
+```bash
+cd ../EventParkingReservationSystem
+dotnet restore backend/EventParkingReservationSystem.API
+dotnet ef database update --project backend/EventParkingReservationSystem.API
+dotnet run --project backend/EventParkingReservationSystem.API --urls http://localhost:5118
+```
+
+The API uses SQL Server LocalDB by default. If `dotnet ef` is not installed, install the matching .NET 8 CLI tool first with `dotnet tool install --global dotnet-ef --version 8.*`. Configure `Email` in the backend `appsettings.json` (or user secrets/environment variables) before testing email OTP login.
+
+Then start Angular:
+
+```bash
+npm install
+npm start
+```
 
 ### UI readability update
 The latest package includes a readability/alignment pass: larger labels and controls, clearer tables and sidebar text, improved spacing, and larger interaction targets while retaining the existing premium theme.
