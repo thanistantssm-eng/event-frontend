@@ -79,6 +79,10 @@ export class Management {
   protected readonly organizers = signal<Organizer[]>([]);
   protected readonly approvals = signal<Approval[]>([]);
   protected readonly categories = signal<EventCategory[]>([]);
+  protected readonly activeVenues = computed(() => this.venues().filter((venue) => venue.isActive));
+  protected readonly activeCategories = computed(() =>
+    this.categories().filter((category) => category.isActive),
+  );
   protected readonly users = signal<User[]>([]);
   protected readonly parkingAreas = signal<ParkingArea[]>([]);
   protected readonly adminDashboard = signal<AdminDashboard | null>(null);
@@ -107,6 +111,7 @@ export class Management {
     posterUrl: '',
   };
   protected readonly propertyForm = { name: '', address: '', city: '', description: '' };
+  protected readonly venueForm = { name: '', location: '', capacity: 1 };
   protected readonly categoryForm = { name: '', description: '' };
   protected readonly ticketForm = { name: '', description: '', price: 0, quantity: 1 };
   protected readonly seatForm = {
@@ -461,8 +466,34 @@ export class Management {
     this.api.createProperty(this.propertyForm).subscribe({
       next: (property) => {
         this.properties.update((items) => [property, ...items]);
-        this.flash('Property created.');
-        this.go('/admin/properties');
+        this.propertyForm.name = '';
+        this.propertyForm.address = '';
+        this.propertyForm.city = '';
+        this.propertyForm.description = '';
+        this.flash('Property created. Add at least one venue.');
+        this.go(`/admin/properties/${property.id}`);
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected createVenue(propertyId: number): void {
+    if (!this.venueForm.name.trim() || Number(this.venueForm.capacity) < 1) {
+      this.flash('Venue name and a positive capacity are required.');
+      return;
+    }
+    this.api.createVenue({
+      propertyId,
+      name: this.venueForm.name.trim(),
+      location: this.venueForm.location.trim() || null,
+      capacity: Number(this.venueForm.capacity),
+    }).subscribe({
+      next: (venue) => {
+        this.venues.update((items) => [...items, venue]);
+        this.venueForm.name = '';
+        this.venueForm.location = '';
+        this.venueForm.capacity = 1;
+        this.flash('Venue created. It is now available in the event form.');
       },
       error: (error) => this.flash(apiErrorMessage(error)),
     });
@@ -575,9 +606,14 @@ export class Management {
 
   private loadData(): void {
     this.loading.set(true);
-    forkJoin({ events: this.api.events(), venues: this.api.venues() }).subscribe({
-      next: ({ events, venues }) => {
+    forkJoin({
+      events: this.api.events(),
+      venues: this.api.venues(),
+      categories: this.api.categories(this.role() === 'admin'),
+    }).subscribe({
+      next: ({ events, venues, categories }) => {
         this.venues.set(venues);
+        this.categories.set(categories);
         const organizerId = this.auth.session()?.organizerId;
         const visibleEvents = this.role() === 'organizer' && organizerId
           ? events.filter((event) => event.organizerId === organizerId)
@@ -604,7 +640,6 @@ export class Management {
         properties: this.api.properties(),
         organizers: this.api.organizers(),
         approvals: this.api.pendingApprovals(),
-        categories: this.api.categories(true),
         users: this.api.users(),
         parkingAreas: this.api.parkingAreas(),
         report: this.api.adminReport(),
@@ -617,7 +652,6 @@ export class Management {
           this.properties.set(data.properties);
           this.organizers.set(data.organizers);
           this.approvals.set(data.approvals);
-          this.categories.set(data.categories);
           this.users.set(data.users);
           this.parkingAreas.set(data.parkingAreas);
           this.adminReport.set(data.report);
