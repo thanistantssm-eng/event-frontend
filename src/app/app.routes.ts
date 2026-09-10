@@ -43,6 +43,7 @@ const adminPaths = [
   'admin/properties/create',
   'admin/properties/:id',
   'admin/properties/:id/edit',
+  'admin/venues',
   'admin/organizers',
   'admin/organizers/:id',
   'admin/users',

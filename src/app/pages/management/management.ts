@@ -83,6 +83,9 @@ export class Management {
   protected readonly activeCategories = computed(() =>
     this.categories().filter((category) => category.isActive),
   );
+  protected readonly activeProperties = computed(() =>
+    this.properties().filter((property) => property.isActive),
+  );
   protected readonly users = signal<User[]>([]);
   protected readonly parkingAreas = signal<ParkingArea[]>([]);
   protected readonly adminDashboard = signal<AdminDashboard | null>(null);
@@ -111,7 +114,7 @@ export class Management {
     posterUrl: '',
   };
   protected readonly propertyForm = { name: '', address: '', city: '', description: '' };
-  protected readonly venueForm = { name: '', location: '', capacity: 1 };
+  protected readonly venueForm = { propertyId: 0, name: '', location: '', capacity: 1 };
   protected readonly categoryForm = { name: '', description: '' };
   protected readonly ticketForm = { name: '', description: '', price: 0, quantity: 1 };
   protected readonly seatForm = {
@@ -140,6 +143,7 @@ export class Management {
   protected readonly adminNav = [
     ['Dashboard', '/admin/dashboard', '⌂'],
     ['Properties', '/admin/properties', '▥'],
+    ['Venues', '/admin/venues', '⌖'],
     ['Organizers', '/admin/organizers', '♙'],
     ['Users', '/admin/users', '♟'],
     ['Events', '/admin/events', '▣'],
@@ -234,6 +238,7 @@ export class Management {
     } else {
       if (clean === 'admin' || clean === 'admin/dashboard') this.view.set('dashboard');
       else if (clean === 'admin/properties') this.view.set('properties');
+      else if (clean === 'admin/venues') this.view.set('venues');
       else if (clean === 'admin/properties/create') this.view.set('property-form');
       else if (clean.endsWith('/edit') && clean.startsWith('admin/properties/'))
         this.view.set('property-form');
@@ -470,6 +475,7 @@ export class Management {
         this.propertyForm.address = '';
         this.propertyForm.city = '';
         this.propertyForm.description = '';
+        this.venueForm.propertyId = property.id;
         this.flash('Property created. Add at least one venue.');
         this.go(`/admin/properties/${property.id}`);
       },
@@ -477,9 +483,9 @@ export class Management {
     });
   }
 
-  protected createVenue(propertyId: number): void {
-    if (!this.venueForm.name.trim() || Number(this.venueForm.capacity) < 1) {
-      this.flash('Venue name and a positive capacity are required.');
+  protected createVenue(propertyId = Number(this.venueForm.propertyId)): void {
+    if (!propertyId || !this.venueForm.name.trim() || Number(this.venueForm.capacity) < 1) {
+      this.flash('Property, venue name and a positive capacity are required.');
       return;
     }
     this.api.createVenue({
@@ -490,6 +496,7 @@ export class Management {
     }).subscribe({
       next: (venue) => {
         this.venues.update((items) => [...items, venue]);
+        this.venueForm.propertyId = propertyId;
         this.venueForm.name = '';
         this.venueForm.location = '';
         this.venueForm.capacity = 1;
