@@ -42,7 +42,7 @@ declare global {
 
 export const API_ROOT =
   (typeof window !== 'undefined' && window.__EVENTORA_API_URL__?.replace(/\/$/, '')) ||
-  'eventparkingapi.runasp.net';
+  'https://eventparkingapi.runasp.net/api';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -327,7 +327,7 @@ export class ApiService {
 
 export function apiErrorMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) return 'Something went wrong. Please try again.';
-  if (error.status === 0) return 'Cannot reach the API. Start the backend on http://localhost:5118.';
+ if (error.status === 0) return 'Cannot reach the API. Please check your internet connection or backend service.';
   const body = error.error as { message?: string; title?: string; errors?: Record<string, string[]> } | string;
   if (typeof body === 'string') return body || `Request failed (${error.status}).`;
   if (body?.message) return body.message;
