@@ -37,6 +37,14 @@ type EventItem = {
   posterUrl?: string | null;
 };
 
+type BookingDraft = {
+  eventId: number;
+  ticketId: number | null;
+  seatId: number | null;
+  parkingId: number | null;
+  paymentMethod: string;
+};
+
 const emptyEvent: EventItem = {
   id: '0',
   backendId: 0,
@@ -103,6 +111,7 @@ export class Portal {
   protected readonly awaitingPaymentOtp = signal(false);
 
   private readonly eventRows = signal<EventItem[]>([]);
+  private readonly bookingDraftKey = 'eventora-booking-draft';
   private loadedBundleEventId: number | null = null;
   protected get events(): EventItem[] {
     return this.eventRows();
@@ -118,13 +127,20 @@ export class Portal {
     );
   });
   protected readonly activeEvent = computed(
-    () => this.events.find((event) => event.id === this.activeEventId()) ?? this.events[0] ?? emptyEvent,
-    );
-  protected readonly eventCategories = computed(() => [...new Set(this.events.map((event) => event.category))]);
+    () =>
+      this.events.find((event) => event.id === this.activeEventId()) ??
+      this.events[0] ??
+      emptyEvent,
+  );
+  protected readonly eventCategories = computed(() => [
+    ...new Set(this.events.map((event) => event.category)),
+  ]);
   protected readonly selectedTicketType = computed(() =>
     this.ticketTypes().find((ticket) => ticket.id === this.selectedTicketId()),
   );
-  protected get selectedTicketHold(): boolean { return !!this.selectedTicketId(); }
+  protected get selectedTicketHold(): boolean {
+    return !!this.selectedTicketId();
+  }
   protected readonly hasParkingReservations = computed(() =>
     this.customerBookings().some((booking) => !!booking.parkingSlot),
   );
@@ -136,7 +152,8 @@ export class Portal {
       0,
   );
   protected readonly parkingPrice = computed(
-    () => this.availableParking().find((slot) => slot.id === this.selectedParkingId())?.parkingFee ?? 0,
+    () =>
+      this.availableParking().find((slot) => slot.id === this.selectedParkingId())?.parkingFee ?? 0,
   );
   protected readonly total = computed(() => this.basePrice() + this.parkingPrice());
 
@@ -245,22 +262,27 @@ export class Portal {
     this.selectedTicket.set(id);
     const parsed = Number(id);
     this.selectedTicketId.set(Number.isFinite(parsed) ? parsed : null);
+    this.persistBookingDraft();
   }
   protected chooseSeat(seat: Seat): void {
     this.selectedSeat.set(seat.seatNumber);
     this.selectedSeatId.set(seat.id);
+    this.persistBookingDraft();
   }
   protected chooseParking(slot: ParkingSlot): void {
     const selected = this.selectedParkingId() === slot.id;
     this.selectedParking.set(selected ? '' : slot.slotNumber);
     this.selectedParkingId.set(selected ? null : slot.id);
+    this.persistBookingDraft();
   }
   protected clearParking(): void {
     this.selectedParking.set('');
     this.selectedParkingId.set(null);
+    this.persistBookingDraft();
   }
   protected choosePayment(method: string): void {
     this.selectedPayment.set(method);
+    this.persistBookingDraft();
   }
   protected pay(): void {
     if (this.loading()) return;
@@ -431,6 +453,7 @@ export class Portal {
         this.loading.set(false);
         this.currentPayment.set(completed);
         this.awaitingPaymentOtp.set(false);
+        this.clearBookingDraft();
         this.go(`/customer/booking/success/${this.currentBooking()!.id}`);
       },
       error: (error) => {
@@ -441,7 +464,10 @@ export class Portal {
   }
 
   private loadInitialData(): void {
-    forkJoin({ events: this.api.events({ status: 'Published' }), venues: this.api.venues() }).subscribe({
+    forkJoin({
+      events: this.api.events({ status: 'Published' }),
+      venues: this.api.venues(),
+    }).subscribe({
       next: ({ events, venues }) => {
         this.eventRows.set(events.map((event, index) => this.toEventItem(event, venues, index)));
         if (!this.events.some((event) => event.id === this.activeEventId()) && this.events[0]) {
@@ -485,7 +511,12 @@ export class Portal {
     ) {
       this.loadEventBundle(last);
     }
-    if (Number.isFinite(last) && (clean.startsWith('customer/bookings/') || clean.includes('/success/') || clean.includes('/ticket/'))) {
+    if (
+      Number.isFinite(last) &&
+      (clean.startsWith('customer/bookings/') ||
+        clean.includes('/success/') ||
+        clean.includes('/ticket/'))
+    ) {
       this.api.booking(last).subscribe({
         next: (booking) => {
           this.currentBooking.set(booking);
@@ -502,12 +533,14 @@ export class Portal {
   private loadEventBundle(eventId: number): void {
     if (this.loadedBundleEventId !== eventId) {
       this.loadedBundleEventId = eventId;
+      const draft = this.readBookingDraft(eventId);
+      this.selectedTicketId.set(draft?.ticketId ?? null);
+      this.selectedSeatId.set(draft?.seatId ?? null);
+      this.selectedParkingId.set(draft?.parkingId ?? null);
+      this.selectedPayment.set(draft?.paymentMethod || 'Card');
       this.selectedTicket.set('');
-      this.selectedTicketId.set(null);
       this.selectedSeat.set('');
-      this.selectedSeatId.set(null);
       this.selectedParking.set('');
-      this.selectedParkingId.set(null);
     }
     forkJoin({
       tickets: this.api.tickets(eventId),
@@ -519,12 +552,69 @@ export class Portal {
         this.availableSeats.set(seats.filter((item) => item.isActive));
         this.availableParking.set(parking.filter((item) => item.isActive));
         const activeTickets = tickets.filter((item) => item.isActive);
-        if (!activeTickets.some((ticket) => ticket.id === this.selectedTicketId()) && activeTickets[0]) {
+        const selectedTicket = activeTickets.find(
+          (ticket) => ticket.id === this.selectedTicketId(),
+        );
+        if (selectedTicket) {
+          this.selectedTicket.set(String(selectedTicket.id));
+        } else if (activeTickets[0]) {
           this.chooseTicket(String(activeTickets[0].id));
+        } else {
+          this.selectedTicketId.set(null);
         }
+        const selectedSeat = seats.find(
+          (seat) =>
+            seat.id === this.selectedSeatId() && seat.isActive && seat.status === 'Available',
+        );
+        this.selectedSeatId.set(selectedSeat?.id ?? null);
+        this.selectedSeat.set(selectedSeat?.seatNumber ?? '');
+        const selectedParking = parking.find(
+          (slot) =>
+            slot.id === this.selectedParkingId() && slot.isActive && slot.status === 'Available',
+        );
+        this.selectedParkingId.set(selectedParking?.id ?? null);
+        this.selectedParking.set(selectedParking?.slotNumber ?? '');
+        this.persistBookingDraft();
       },
       error: (error) => this.apiError.set(apiErrorMessage(error)),
     });
+  }
+
+  private readBookingDraft(eventId: number): BookingDraft | null {
+    try {
+      const stored = sessionStorage.getItem(this.bookingDraftKey);
+      if (!stored) return null;
+      const draft = JSON.parse(stored) as Partial<BookingDraft>;
+      return draft.eventId === eventId
+        ? {
+            eventId,
+            ticketId: typeof draft.ticketId === 'number' ? draft.ticketId : null,
+            seatId: typeof draft.seatId === 'number' ? draft.seatId : null,
+            parkingId: typeof draft.parkingId === 'number' ? draft.parkingId : null,
+            paymentMethod: typeof draft.paymentMethod === 'string' ? draft.paymentMethod : 'Card',
+          }
+        : null;
+    } catch {
+      sessionStorage.removeItem(this.bookingDraftKey);
+      return null;
+    }
+  }
+
+  private persistBookingDraft(): void {
+    const eventId = Number(this.activeEventId());
+    if (!Number.isFinite(eventId) || eventId <= 0) return;
+    const draft: BookingDraft = {
+      eventId,
+      ticketId: this.selectedTicketId(),
+      seatId: this.selectedSeatId(),
+      parkingId: this.selectedParkingId(),
+      paymentMethod: this.selectedPayment(),
+    };
+    sessionStorage.setItem(this.bookingDraftKey, JSON.stringify(draft));
+  }
+
+  private clearBookingDraft(): void {
+    sessionStorage.removeItem(this.bookingDraftKey);
   }
 
   private toEventItem(event: EventRecord, venues: Venue[], index: number): EventItem {

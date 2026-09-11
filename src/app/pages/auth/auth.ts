@@ -18,6 +18,7 @@ export class Auth {
   protected readonly loginTarget: string;
   protected readonly passwordVisible = signal(false);
   protected readonly remember = signal(true);
+  protected readonly acceptedTerms = signal(false);
   protected readonly message = signal('');
   protected readonly resetStage = signal<'request' | 'change'>('request');
   protected readonly loginStage = signal<'password' | 'otp'>('password');
@@ -47,11 +48,12 @@ export class Auth {
         : router.url.includes('reset') || router.url.includes('forgot-password')
           ? 'reset'
           : 'login';
-    this.loginTarget = router.url.startsWith('/admin/') || router.url.includes('role=admin')
-      ? '/admin/dashboard'
-      : router.url.includes('role=organizer')
-        ? '/organizer/dashboard'
-        : '/customer/dashboard';
+    this.loginTarget =
+      router.url.startsWith('/admin/') || router.url.includes('role=admin')
+        ? '/admin/dashboard'
+        : router.url.includes('role=organizer')
+          ? '/organizer/dashboard'
+          : '/customer/dashboard';
     this.isAdminEntry = this.loginTarget.startsWith('/admin');
     this.roleLabel = this.loginTarget.startsWith('/admin')
       ? 'Administrator'
@@ -105,9 +107,10 @@ export class Auth {
         !this.email ||
         !this.phone ||
         !this.password ||
-        this.password !== this.confirm
+        this.password !== this.confirm ||
+        !this.acceptedTerms()
       ) {
-        this.message.set('Complete all fields and ensure passwords match.');
+        this.message.set('Complete all fields, accept the terms and ensure passwords match.');
         return;
       }
       const role: AppRole = this.loginTarget.startsWith('/organizer') ? 'Organizer' : 'Customer';
@@ -126,7 +129,10 @@ export class Auth {
         .subscribe({
           next: () => {
             this.message.set('Account created. Sign in to verify your email with OTP.');
-            setTimeout(() => void this.router.navigateByUrl(`/login?role=${role.toLowerCase()}`), 900);
+            setTimeout(
+              () => void this.router.navigateByUrl(`/login?role=${role.toLowerCase()}`),
+              900,
+            );
           },
           error: (error) => this.message.set(apiErrorMessage(error)),
         });
@@ -135,7 +141,12 @@ export class Auth {
         this.message.set('Administrator setup has already been completed.');
         return;
       }
-      if (!this.name.trim() || !this.email.trim() || !this.password || this.password !== this.confirm) {
+      if (
+        !this.name.trim() ||
+        !this.email.trim() ||
+        !this.password ||
+        this.password !== this.confirm
+      ) {
         this.message.set('Complete all fields and ensure passwords match.');
         return;
       }
@@ -229,7 +240,12 @@ export class Auth {
       .subscribe({
         next: (session) => {
           this.message.set('Login successful. Redirecting…');
-          const rolePrefix = session.role === 'Admin' ? '/admin/' : session.role === 'Organizer' ? '/organizer/' : '/customer/';
+          const rolePrefix =
+            session.role === 'Admin'
+              ? '/admin/'
+              : session.role === 'Organizer'
+                ? '/organizer/'
+                : '/customer/';
           const destination = this.returnUrl?.startsWith(rolePrefix)
             ? this.returnUrl
             : this.auth.landingRoute(session.role);

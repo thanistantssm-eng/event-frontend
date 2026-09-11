@@ -1,90 +1,1057 @@
-<div class="manage-shell" [class.admin-theme]="role() === 'admin'">
+<div
+  class="manage-shell"
+  [class.admin-theme]="role() === 'admin'"
+  [class.busy]="actionLoading()"
+  [attr.aria-busy]="actionLoading()"
+>
   <aside class="manage-side" [class.open]="sidebarOpen()">
-    <a class="manage-brand" [routerLink]="role() === 'admin' ? '/admin/dashboard' : '/organizer/dashboard'"><span>✦</span><div><b>Eventora</b><small>{{ role() === 'admin' ? 'Administration' : 'Organizer Portal' }}</small></div></a>
-    <nav>@for (item of role() === 'admin' ? adminNav : organizerNav; track item[1]) { <a [routerLink]="item[1]" [class.active]="isActive(item[1])"><i>{{ item[2] }}</i>{{ item[0] }}</a> }</nav>
-    <button type="button" class="signout" (click)="auth.signOut(); go(role() === 'admin' ? '/admin/login' : '/login')">↪ Sign Out</button>
+    <a
+      class="manage-brand"
+      [routerLink]="role() === 'admin' ? '/admin/dashboard' : '/organizer/dashboard'"
+      ><span>✦</span>
+      <div>
+        <b>Eventora</b
+        ><small>{{ role() === 'admin' ? 'Administration' : 'Organizer Portal' }}</small>
+      </div></a
+    >
+    <nav>
+      @for (item of role() === 'admin' ? adminNav : organizerNav; track item[1]) {
+        <a [routerLink]="item[1]" [class.active]="isActive(item[1])"
+          ><i>{{ item[2] }}</i
+          >{{ item[0] }}</a
+        >
+      }
+    </nav>
+    <button
+      type="button"
+      class="signout"
+      (click)="auth.signOut(); go(role() === 'admin' ? '/admin/login' : '/login')"
+    >
+      ↪ Sign Out
+    </button>
   </aside>
 
   <section class="manage-main">
-    <header class="manage-top"><button type="button" (click)="sidebarOpen.set(!sidebarOpen())">☰</button><div><b>{{ role() === 'admin' ? 'Administration' : (organizerProfile()?.organizationName || organizerDashboard()?.organizationName || 'Organizer') }}</b><small>{{ auth.session()?.email }}</small></div><button type="button" (click)="goToNotifications()">♢</button><button type="button" (click)="goToAccount()">{{ (auth.session()?.username || 'U').charAt(0) }}</button></header>
+    <header class="manage-top">
+      <button type="button" (click)="sidebarOpen.set(!sidebarOpen())">☰</button>
+      <div>
+        <b>{{
+          role() === 'admin'
+            ? 'Administration'
+            : organizerProfile()?.organizationName ||
+              organizerDashboard()?.organizationName ||
+              'Organizer'
+        }}</b
+        ><small>{{ auth.session()?.email }}</small>
+      </div>
+      <button type="button" (click)="goToNotifications()">♢</button
+      ><button type="button" (click)="goToAccount()">
+        {{ (auth.session()?.username || 'U').charAt(0) }}
+      </button>
+    </header>
     <main class="manage-content">
-      @if (apiError()) { <div class="notice error"><b>Unable to load some data</b><span>{{ apiError() }}</span></div> }
+      @if (apiError()) {
+        <div class="notice error">
+          <b>Unable to load some data</b><span>{{ apiError() }}</span>
+        </div>
+      }
 
       @if (view() === 'dashboard') {
-        <section class="manage-title"><div><span>{{ role() | uppercase }} DASHBOARD</span><h1>Live platform overview</h1><p>Counts and totals are loaded from backend dashboard endpoints.</p></div>@if (role() === 'organizer') { <a class="primary" routerLink="/organizer/events/create">Create Event</a> } @else { <a class="primary" routerLink="/admin/venues">Manage Venues</a> }</section>
-        @if (role() === 'admin') { @if (adminDashboard(); as data) { <section class="metric-grid"><article><small>Total Users</small><b>{{ data.totalUsers }}</b><span>{{ data.activeUsers }} active</span></article><article><small>Published Events</small><b>{{ data.publishedEvents }}</b><span>{{ data.pendingApprovalEvents }} pending review</span></article><article><small>Total Bookings</small><b>{{ data.totalBookings }}</b><span>{{ data.confirmedBookings }} confirmed</span></article><article><small>Total Revenue</small><b>LKR {{ data.totalRevenue | number }}</b><span>{{ data.completedPayments }} completed payments</span></article></section> } }
-        @else { @if (organizerDashboard(); as data) { <section class="metric-grid"><article><small>My Events</small><b>{{ data.totalEvents }}</b><span>{{ data.publishedEvents }} published</span></article><article><small>Pending Review</small><b>{{ data.pendingApprovalEvents }}</b><span>{{ data.draftEvents }} drafts</span></article><article><small>Confirmed Bookings</small><b>{{ data.confirmedBookings }}</b><span>{{ data.totalBookings }} total</span></article><article><small>Total Revenue</small><b>LKR {{ data.totalRevenue | number }}</b><span>{{ data.upcomingEvents }} upcoming events</span></article></section> } }
-        <section class="data-card"><div class="card-head"><div><h2>{{ role() === 'admin' ? 'Recent Events' : 'My Events' }}</h2><p>Current database records.</p></div><a [routerLink]="role() === 'admin' ? '/admin/events' : '/organizer/my-events'">View all →</a></div>@for (event of organizerEvents.slice(0, 5); track event.backendId) { <div class="data-row"><span><b>{{ event.title }}</b><small>{{ event.venue }} • {{ event.date }}</small></span><em class="status">{{ event.status }}</em><strong>{{ event.bookings }} bookings</strong></div> } @empty { <div class="empty-state"><h3>No events</h3><p>Create an event to start the workflow.</p></div> }</section>
+        <section class="manage-title">
+          <div>
+            <span>{{ role() | uppercase }} DASHBOARD</span>
+            <h1>Live platform overview</h1>
+            <p>Counts and totals are loaded from backend dashboard endpoints.</p>
+          </div>
+          @if (role() === 'organizer') {
+            <a class="primary" routerLink="/organizer/events/create">Create Event</a>
+          } @else {
+            <a class="primary" routerLink="/admin/venues">Manage Venues</a>
+          }
+        </section>
+        @if (role() === 'admin') {
+          @if (adminDashboard(); as data) {
+            <section class="metric-grid">
+              <article>
+                <small>Total Users</small><b>{{ data.totalUsers }}</b
+                ><span>{{ data.activeUsers }} active</span>
+              </article>
+              <article>
+                <small>Published Events</small><b>{{ data.publishedEvents }}</b
+                ><span>{{ data.pendingApprovalEvents }} pending review</span>
+              </article>
+              <article>
+                <small>Total Bookings</small><b>{{ data.totalBookings }}</b
+                ><span>{{ data.confirmedBookings }} confirmed</span>
+              </article>
+              <article>
+                <small>Total Revenue</small><b>LKR {{ data.totalRevenue | number }}</b
+                ><span>{{ data.completedPayments }} completed payments</span>
+              </article>
+            </section>
+          }
+        } @else {
+          @if (organizerDashboard(); as data) {
+            <section class="metric-grid">
+              <article>
+                <small>My Events</small><b>{{ data.totalEvents }}</b
+                ><span>{{ data.publishedEvents }} published</span>
+              </article>
+              <article>
+                <small>Pending Review</small><b>{{ data.pendingApprovalEvents }}</b
+                ><span>{{ data.draftEvents }} drafts</span>
+              </article>
+              <article>
+                <small>Confirmed Bookings</small><b>{{ data.confirmedBookings }}</b
+                ><span>{{ data.totalBookings }} total</span>
+              </article>
+              <article>
+                <small>Total Revenue</small><b>LKR {{ data.totalRevenue | number }}</b
+                ><span>{{ data.upcomingEvents }} upcoming events</span>
+              </article>
+            </section>
+          }
+        }
+        <section class="data-card">
+          <div class="card-head">
+            <div>
+              <h2>{{ role() === 'admin' ? 'Recent Events' : 'My Events' }}</h2>
+              <p>Current database records.</p>
+            </div>
+            <a [routerLink]="role() === 'admin' ? '/admin/events' : '/organizer/my-events'"
+              >View all →</a
+            >
+          </div>
+          @for (event of organizerEvents.slice(0, 5); track event.backendId) {
+            <div class="data-row">
+              <span
+                ><b>{{ event.title }}</b
+                ><small>{{ event.venue }} • {{ event.date }}</small></span
+              ><em class="status">{{ event.status }}</em
+              ><strong>{{ event.bookings }} bookings</strong>
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No events</h3>
+              <p>Create an event to start the workflow.</p>
+            </div>
+          }
+        </section>
       }
 
       @if (view() === 'my-events' || view() === 'events') {
-        <section class="manage-title"><div><span>{{ role() === 'admin' ? 'ALL EVENTS' : 'MY EVENTS' }}</span><h1>Event Management</h1><p>{{ role() === 'admin' ? 'Review and publish platform events.' : 'Only events owned by your organizer account are listed.' }}</p></div><a class="primary" [routerLink]="role() === 'admin' ? '/admin/events/create' : '/organizer/events/create'">Create Event</a></section>
-        <section class="filter-row"><input [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search events" /><select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option>All</option><option>Draft</option><option>Pending</option><option>Approved</option><option>Published</option><option>Rejected</option></select></section>
-        <section class="data-card">@for (event of filteredEvents(); track event.backendId) { <div class="data-row"><span><b>{{ event.title }}</b><small>{{ event.venue }} • {{ event.date }} • {{ event.type }}</small></span><em class="status">{{ event.status }}</em><strong>{{ event.revenue }}</strong><button type="button" (click)="go('/' + role() + '/events/' + event.backendId)">Open</button>@if (role() === 'organizer' && event.status === 'Draft') { <button type="button" (click)="submitEventForApproval(event.backendId)">Submit</button> }@if (role() === 'admin' && event.status === 'Approved') { <button class="primary" type="button" (click)="publish(event)">Publish</button> }</div> } @empty { <div class="empty-state"><h3>No matching events</h3><p>There are no records for the selected filters.</p></div> }</section>
+        <section class="manage-title">
+          <div>
+            <span>{{ role() === 'admin' ? 'ALL EVENTS' : 'MY EVENTS' }}</span>
+            <h1>Event Management</h1>
+            <p>
+              {{
+                role() === 'admin'
+                  ? 'Review and publish platform events.'
+                  : 'Only events owned by your organizer account are listed.'
+              }}
+            </p>
+          </div>
+          <a
+            class="primary"
+            [routerLink]="role() === 'admin' ? '/admin/events/create' : '/organizer/events/create'"
+            >Create Event</a
+          >
+        </section>
+        <section class="filter-row">
+          <input
+            [ngModel]="query()"
+            (ngModelChange)="query.set($event)"
+            placeholder="Search events"
+          /><select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
+            <option>All</option>
+            <option>Draft</option>
+            <option>Pending</option>
+            <option>Approved</option>
+            <option>Published</option>
+            <option>Rejected</option>
+          </select>
+        </section>
+        <section class="data-card">
+          @for (event of filteredEvents(); track event.backendId) {
+            <div class="data-row">
+              <span
+                ><b>{{ event.title }}</b
+                ><small>{{ event.venue }} • {{ event.date }} • {{ event.type }}</small></span
+              ><em class="status">{{ event.status }}</em
+              ><strong>{{ event.revenue }}</strong
+              ><button type="button" (click)="go('/' + role() + '/events/' + event.backendId)">
+                Open
+              </button>
+              @if (role() === 'organizer' && event.status === 'Draft') {
+                <button type="button" (click)="submitEventForApproval(event.backendId)">
+                  Submit
+                </button>
+              }
+              @if (role() === 'admin' && event.status === 'Approved') {
+                <button class="primary" type="button" (click)="publish(event)">Publish</button>
+              }
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No matching events</h3>
+              <p>There are no records for the selected filters.</p>
+            </div>
+          }
+        </section>
       }
 
       @if (view().startsWith('create-') || view() === 'admin-event-form') {
-        <section class="manage-title"><div><span>CREATE EVENT</span><h1>New Event Draft</h1><p>All required fields map directly to the backend event contract.</p></div></section>
+        <section class="manage-title">
+          <div>
+            <span>CREATE EVENT</span>
+            <h1>New Event Draft</h1>
+            <p>All required fields map directly to the backend event contract.</p>
+          </div>
+        </section>
         <form class="data-card form-grid" (ngSubmit)="createEvent()">
-          @if (activeVenues().length === 0 || activeCategories().length === 0) { <div class="notice warning full"><b>Event setup is incomplete</b><span>@if (activeVenues().length === 0) { No active venues are available. } @if (activeCategories().length === 0) { No active categories are available. } @if (role() === 'admin') { Add them from Properties and Categories before creating an event. } @else { Please ask the administrator to add them first. }</span>@if (role() === 'admin') { <div class="setup-links"><a routerLink="/admin/properties">Manage Properties</a><a routerLink="/admin/categories">Manage Categories</a></div> }</div> }
-          @if (role() === 'admin') { <label>Organizer<select name="organizer" [(ngModel)]="eventForm.organizerId" required><option [ngValue]="0">Select organizer</option>@for (organizer of organizers(); track organizer.id) { <option [ngValue]="organizer.id">{{ organizer.organizationName }} — {{ organizer.email }}</option> }</select></label> }
-          <label>Event Name<input name="eventName" [(ngModel)]="eventForm.name" required /></label><label>Event Type<select name="eventType" [(ngModel)]="eventForm.eventType"><option value="NonSeatBased">General Entry</option><option value="SeatBased">Seat Based</option></select></label>
-          <label>Venue<select name="venue" [(ngModel)]="eventForm.venueId" required [disabled]="activeVenues().length === 0"><option [ngValue]="0">{{ activeVenues().length ? 'Select venue' : 'No venues available' }}</option>@for (venue of activeVenues(); track venue.id) { <option [ngValue]="venue.id">{{ venue.name }} — {{ venue.propertyName }}</option> }</select></label>
-          <label>Category<select name="category" [(ngModel)]="eventForm.eventCategoryId" required [disabled]="activeCategories().length === 0"><option [ngValue]="0">{{ activeCategories().length ? 'Select category' : 'No categories available' }}</option>@for (category of activeCategories(); track category.id) { <option [ngValue]="category.id">{{ category.name }}</option> }</select></label>
-          <label>Starts<input name="starts" type="datetime-local" [(ngModel)]="eventForm.startDateTime" required /></label><label>Ends<input name="ends" type="datetime-local" [(ngModel)]="eventForm.endDateTime" required /></label>
-          <label>Base Ticket Price<input name="price" type="number" min="0" [(ngModel)]="eventForm.ticketPrice" required /></label><label>Poster URL<input name="poster" type="url" [(ngModel)]="eventForm.posterUrl" /></label><label class="full">Description<textarea name="description" [(ngModel)]="eventForm.description" rows="5"></textarea></label>
-          <div class="full action-row"><button type="button" (click)="go(role() === 'admin' ? '/admin/events' : '/organizer/my-events')">Cancel</button><button class="primary" type="submit" [disabled]="activeVenues().length === 0 || activeCategories().length === 0">Create Draft</button></div>
+          @if (activeVenues().length === 0 || activeCategories().length === 0) {
+            <div class="notice warning full">
+              <b>Event setup is incomplete</b
+              ><span>
+                @if (activeVenues().length === 0) {
+                  No active venues are available.
+                }
+                @if (activeCategories().length === 0) {
+                  No active categories are available.
+                }
+                @if (role() === 'admin') {
+                  Add them from Properties and Categories before creating an event.
+                } @else {
+                  Please ask the administrator to add them first.
+                }
+              </span>
+              @if (role() === 'admin') {
+                <div class="setup-links">
+                  <a routerLink="/admin/properties">Manage Properties</a
+                  ><a routerLink="/admin/categories">Manage Categories</a>
+                </div>
+              }
+            </div>
+          }
+          @if (role() === 'admin') {
+            <label
+              >Organizer<select name="organizer" [(ngModel)]="eventForm.organizerId" required>
+                <option [ngValue]="0">Select organizer</option>
+                @for (organizer of organizers(); track organizer.id) {
+                  <option [ngValue]="organizer.id">
+                    {{ organizer.organizationName }} — {{ organizer.email }}
+                  </option>
+                }
+              </select></label
+            >
+          }
+          <label>Event Name<input name="eventName" [(ngModel)]="eventForm.name" required /></label
+          ><label
+            >Event Type<select name="eventType" [(ngModel)]="eventForm.eventType">
+              <option value="NonSeatBased">General Entry</option>
+              <option value="SeatBased">Seat Based</option>
+            </select></label
+          >
+          <label
+            >Venue<select
+              name="venue"
+              [(ngModel)]="eventForm.venueId"
+              required
+              [disabled]="activeVenues().length === 0"
+            >
+              <option [ngValue]="0">
+                {{ activeVenues().length ? 'Select venue' : 'No venues available' }}
+              </option>
+              @for (venue of activeVenues(); track venue.id) {
+                <option [ngValue]="venue.id">{{ venue.name }} — {{ venue.propertyName }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Category<select
+              name="category"
+              [(ngModel)]="eventForm.eventCategoryId"
+              required
+              [disabled]="activeCategories().length === 0"
+            >
+              <option [ngValue]="0">
+                {{ activeCategories().length ? 'Select category' : 'No categories available' }}
+              </option>
+              @for (category of activeCategories(); track category.id) {
+                <option [ngValue]="category.id">{{ category.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Starts<input
+              name="starts"
+              type="datetime-local"
+              [(ngModel)]="eventForm.startDateTime"
+              required /></label
+          ><label
+            >Ends<input
+              name="ends"
+              type="datetime-local"
+              [(ngModel)]="eventForm.endDateTime"
+              required
+          /></label>
+          <label
+            >Base Ticket Price<input
+              name="price"
+              type="number"
+              min="0"
+              [(ngModel)]="eventForm.ticketPrice"
+              required /></label
+          ><label
+            >Poster URL<input name="poster" type="url" [(ngModel)]="eventForm.posterUrl" /></label
+          ><label class="full"
+            >Description<textarea
+              name="description"
+              [(ngModel)]="eventForm.description"
+              rows="5"
+            ></textarea>
+          </label>
+          <div class="full action-row">
+            <button
+              type="button"
+              (click)="go(role() === 'admin' ? '/admin/events' : '/organizer/my-events')"
+            >
+              Cancel</button
+            ><button
+              class="primary"
+              type="submit"
+              [disabled]="activeVenues().length === 0 || activeCategories().length === 0"
+            >
+              Create Draft
+            </button>
+          </div>
         </form>
       }
 
-      @if (view() === 'event-detail' || view() === 'admin-event-detail' || view() === 'event-edit' || view() === 'seat-manage' || view() === 'pricing-manage' || view() === 'parking-manage' || view() === 'event-bookings' || view() === 'event-reports' || view() === 'poster-qr' || view() === 'admin-layout') {
-        @if (selectedEvent(); as event) { <section class="manage-title"><div><span>EVENT #{{ event.backendId }}</span><h1>{{ event.title }}</h1><p>{{ event.venue }} • {{ event.date }}</p></div><em class="status">{{ event.status }}</em></section><section class="metric-grid"><article><small>Type</small><b>{{ event.type }}</b></article><article><small>Bookings</small><b>{{ event.bookings }}</b></article><article><small>Revenue</small><b>{{ event.revenue }}</b></article><article><small>Lifecycle</small><b>{{ event.status }}</b></article></section><section class="data-card"><h2>Available actions</h2><p>Ticket types, seats and parking are event-scoped. Use the corresponding API-backed management screens after the draft is created.</p>@if (role() === 'organizer' && event.status === 'Draft') { <button class="primary" type="button" (click)="submitEventForApproval(event.backendId)">Submit for Approval</button> }@if (role() === 'admin' && event.status === 'Approved') { <button class="primary" type="button" (click)="publish(event)">Publish Event</button> }</section> } @else { <section class="empty-state"><h2>Event not found</h2><p>The requested event is unavailable to this account.</p></section> }
+      @if (
+        view() === 'event-detail' ||
+        view() === 'admin-event-detail' ||
+        view() === 'event-edit' ||
+        view() === 'seat-manage' ||
+        view() === 'pricing-manage' ||
+        view() === 'parking-manage' ||
+        view() === 'event-bookings' ||
+        view() === 'event-reports' ||
+        view() === 'poster-qr' ||
+        view() === 'admin-layout'
+      ) {
+        @if (selectedEvent(); as event) {
+          <section class="manage-title">
+            <div>
+              <span>EVENT #{{ event.backendId }}</span>
+              <h1>{{ event.title }}</h1>
+              <p>{{ event.venue }} • {{ event.date }}</p>
+            </div>
+            <em class="status">{{ event.status }}</em>
+          </section>
+          <section class="metric-grid">
+            <article>
+              <small>Type</small><b>{{ event.type }}</b>
+            </article>
+            <article>
+              <small>Bookings</small><b>{{ event.bookings }}</b>
+            </article>
+            <article>
+              <small>Revenue</small><b>{{ event.revenue }}</b>
+            </article>
+            <article>
+              <small>Lifecycle</small><b>{{ event.status }}</b>
+            </article>
+          </section>
+          <section class="data-card">
+            <h2>Available actions</h2>
+            <p>
+              Ticket types, seats and parking are event-scoped. Use the corresponding API-backed
+              management screens after the draft is created.
+            </p>
+            @if (role() === 'organizer' && event.status === 'Draft') {
+              <button
+                class="primary"
+                type="button"
+                (click)="submitEventForApproval(event.backendId)"
+              >
+                Submit for Approval
+              </button>
+            }
+            @if (role() === 'admin' && event.status === 'Approved') {
+              <button class="primary" type="button" (click)="publish(event)">Publish Event</button>
+            }
+          </section>
+        } @else {
+          <section class="empty-state">
+            <h2>Event not found</h2>
+            <p>The requested event is unavailable to this account.</p>
+          </section>
+        }
       }
 
       @if (view() === 'event-detail' || view() === 'admin-event-detail') {
-        @if (selectedEvent(); as event) { <section class="data-card"><h2>Configure Event</h2><div class="action-row"><button type="button" (click)="go('/' + role() + '/events/' + event.backendId + '/ticket-pricing')">Ticket Types</button>@if (event.type === 'Seat Based') { <button type="button" (click)="go('/' + role() + '/events/' + event.backendId + '/seats')">Seats</button> }<button type="button" (click)="go('/' + role() + '/events/' + event.backendId + (role() === 'admin' ? '/layout' : '/parking-setup'))">Parking</button></div></section> }
+        @if (selectedEvent(); as event) {
+          <section class="data-card">
+            <h2>Configure Event</h2>
+            <div class="action-row">
+              <button
+                type="button"
+                (click)="go('/' + role() + '/events/' + event.backendId + '/ticket-pricing')"
+              >
+                Ticket Types
+              </button>
+              @if (event.type === 'Seat Based') {
+                <button
+                  type="button"
+                  (click)="go('/' + role() + '/events/' + event.backendId + '/seats')"
+                >
+                  Seats
+                </button>
+              }
+              <button
+                type="button"
+                (click)="
+                  go(
+                    '/' +
+                      role() +
+                      '/events/' +
+                      event.backendId +
+                      (role() === 'admin' ? '/layout' : '/parking-setup')
+                  )
+                "
+              >
+                Parking
+              </button>
+            </div>
+          </section>
+        }
       }
 
       @if (view() === 'pricing-manage') {
-        <section class="data-card"><h2>Ticket Types</h2><form class="form-grid" (ngSubmit)="addTicket()"><label>Name<input name="ticketName" [(ngModel)]="ticketForm.name" required /></label><label>Price<input name="ticketPrice" type="number" min="0" [(ngModel)]="ticketForm.price" required /></label><label>Quantity<input name="ticketQuantity" type="number" min="1" [(ngModel)]="ticketForm.quantity" required /></label><label>Description<input name="ticketDescription" [(ngModel)]="ticketForm.description" /></label><button class="primary" type="submit">Add Ticket Type</button></form>@for (ticket of eventTickets(); track ticket.id) { <div class="data-row"><span><b>{{ ticket.name }}</b><small>{{ ticket.description || 'No description' }}</small></span><strong>LKR {{ ticket.price | number }}</strong><em>{{ ticket.quantity }} configured</em></div> } @empty { <div class="empty-state"><p>No ticket types configured.</p></div> }</section>
+        <section class="data-card">
+          <h2>Ticket Types</h2>
+          <form class="form-grid" (ngSubmit)="addTicket()">
+            <label>Name<input name="ticketName" [(ngModel)]="ticketForm.name" required /></label
+            ><label
+              >Price<input
+                name="ticketPrice"
+                type="number"
+                min="0"
+                [(ngModel)]="ticketForm.price"
+                required /></label
+            ><label
+              >Quantity<input
+                name="ticketQuantity"
+                type="number"
+                min="1"
+                [(ngModel)]="ticketForm.quantity"
+                required /></label
+            ><label
+              >Description<input
+                name="ticketDescription"
+                [(ngModel)]="ticketForm.description" /></label
+            ><button class="primary" type="submit">Add Ticket Type</button>
+          </form>
+          @for (ticket of eventTickets(); track ticket.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ ticket.name }}</b
+                ><small>{{ ticket.description || 'No description' }}</small></span
+              ><strong>LKR {{ ticket.price | number }}</strong
+              ><em>{{ ticket.quantity }} configured</em>
+            </div>
+          } @empty {
+            <div class="empty-state"><p>No ticket types configured.</p></div>
+          }
+        </section>
       }
 
       @if (view() === 'seat-manage') {
-        <section class="data-card"><h2>Seat Setup</h2><form class="form-grid" (ngSubmit)="addSeat()"><label>Seat Number<input name="seatNumber" [(ngModel)]="seatForm.seatNumber" required /></label><label>Row<input name="seatRow" [(ngModel)]="seatForm.rowLabel" /></label><label>Column<input name="seatColumn" type="number" min="1" [(ngModel)]="seatForm.columnNumber" /></label><label>Price Override<input name="seatPrice" type="number" min="0" [(ngModel)]="seatForm.priceOverride" /></label><button class="primary" type="submit">Add Seat</button></form><div class="seat-grid">@for (seat of eventSeats(); track seat.id) { <span [class.selected]="seat.status === 'Available'">{{ seat.seatNumber }}<small>{{ seat.status }}</small></span> } @empty { <div class="empty-state"><p>No seats configured.</p></div> }</div></section>
+        <section class="data-card">
+          <h2>Seat Setup</h2>
+          <form class="form-grid" (ngSubmit)="addSeat()">
+            <label
+              >Seat Number<input
+                name="seatNumber"
+                [(ngModel)]="seatForm.seatNumber"
+                required /></label
+            ><label>Row<input name="seatRow" [(ngModel)]="seatForm.rowLabel" /></label
+            ><label
+              >Column<input
+                name="seatColumn"
+                type="number"
+                min="1"
+                [(ngModel)]="seatForm.columnNumber" /></label
+            ><label
+              >Price Override<input
+                name="seatPrice"
+                type="number"
+                min="0"
+                [(ngModel)]="seatForm.priceOverride" /></label
+            ><button class="primary" type="submit">Add Seat</button>
+          </form>
+          <div class="seat-grid">
+            @for (seat of eventSeats(); track seat.id) {
+              <span [class.selected]="seat.status === 'Available'"
+                >{{ seat.seatNumber }}<small>{{ seat.status }}</small></span
+              >
+            } @empty {
+              <div class="empty-state"><p>No seats configured.</p></div>
+            }
+          </div>
+        </section>
       }
 
       @if (view() === 'parking-manage' || view() === 'admin-layout') {
-        <section class="data-card"><h2>Event Parking Allocation</h2><form class="form-grid" (ngSubmit)="addParkingAllocation()"><label>Parking Area<select name="parkingArea" [(ngModel)]="parkingForm.parkingAreaId" required><option [ngValue]="0">Select area</option>@for (area of parkingAreas(); track area.id) { @if (area.isActive) { <option [ngValue]="area.id">{{ area.name }} — {{ area.capacity }} slots</option> } }</select></label><label>Slots to Allocate<input name="slotCount" type="number" min="1" [(ngModel)]="parkingForm.allocatedSlotCount" required /></label><label>Fee<input name="parkingFee" type="number" min="0" [(ngModel)]="parkingForm.parkingFee" required /></label><button class="primary" type="submit">Allocate Parking</button></form>@for (allocation of eventParking()?.allocations || []; track allocation.id) { <div class="data-row"><span><b>{{ allocation.parkingAreaName || ('Area #' + allocation.parkingAreaId) }}</b><small>Event allocation</small></span><strong>{{ allocation.allocatedSlotCount }} slots</strong><em>LKR {{ allocation.parkingFee | number }}</em></div> } @empty { <div class="empty-state"><p>No parking allocated to this event.</p></div> }</section>
+        <section class="data-card">
+          <h2>Event Parking Allocation</h2>
+          <form class="form-grid" (ngSubmit)="addParkingAllocation()">
+            <label
+              >Parking Area<select
+                name="parkingArea"
+                [(ngModel)]="parkingForm.parkingAreaId"
+                required
+              >
+                <option [ngValue]="0">Select area</option>
+                @for (area of parkingAreas(); track area.id) {
+                  @if (area.isActive) {
+                    <option [ngValue]="area.id">{{ area.name }} — {{ area.capacity }} slots</option>
+                  }
+                }
+              </select></label
+            ><label
+              >Slots to Allocate<input
+                name="slotCount"
+                type="number"
+                min="1"
+                [(ngModel)]="parkingForm.allocatedSlotCount"
+                required /></label
+            ><label
+              >Fee<input
+                name="parkingFee"
+                type="number"
+                min="0"
+                [(ngModel)]="parkingForm.parkingFee"
+                required /></label
+            ><button class="primary" type="submit">Allocate Parking</button>
+          </form>
+          @for (allocation of eventParking()?.allocations || []; track allocation.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ allocation.parkingAreaName || 'Area #' + allocation.parkingAreaId }}</b
+                ><small>Event allocation</small></span
+              ><strong>{{ allocation.allocatedSlotCount }} slots</strong
+              ><em>LKR {{ allocation.parkingFee | number }}</em>
+            </div>
+          } @empty {
+            <div class="empty-state"><p>No parking allocated to this event.</p></div>
+          }
+        </section>
       }
 
-      @if (view() === 'venues') { <section class="manage-title"><div><span>ADMINISTRATION</span><h1>Venues</h1><p>Create and view venues used by the event workflow.</p></div></section>@if (activeProperties().length === 0) { <div class="notice warning"><b>A property is required first.</b><span>Create an active property before adding a venue.</span><div class="setup-links"><a routerLink="/admin/properties/create">Add Property</a></div></div> }<form class="data-card form-grid" (ngSubmit)="createVenue()"><label>Property<select name="venueProperty" [(ngModel)]="venueForm.propertyId" required [disabled]="activeProperties().length === 0"><option [ngValue]="0">{{ activeProperties().length ? 'Select property' : 'No properties available' }}</option>@for (property of activeProperties(); track property.id) { <option [ngValue]="property.id">{{ property.name }} — {{ property.city || property.address }}</option> }</select></label><label>Venue Name<input name="venueName" [(ngModel)]="venueForm.name" required /></label><label>Location<input name="venueLocation" [(ngModel)]="venueForm.location" /></label><label>Capacity<input name="venueCapacity" type="number" min="1" [(ngModel)]="venueForm.capacity" required /></label><button class="primary" type="submit" [disabled]="activeProperties().length === 0">Add Venue</button></form><section class="data-card"><div class="card-head"><div><h2>All Venues</h2><p>Active venues are available to organizers while creating events.</p></div></div>@for (venue of venues(); track venue.id) { <div class="data-row"><span><b>{{ venue.name }}</b><small>{{ venue.propertyName }} • {{ venue.location || 'Location not specified' }}</small></span><strong>{{ venue.capacity | number }} capacity</strong><em class="status">{{ venue.isActive ? 'Active' : 'Inactive' }}</em></div> } @empty { <div class="empty-state"><h3>No venues yet</h3><p>Use the form above to add the first venue.</p></div> }</section> }
-      @if (view() === 'properties') { <section class="manage-title"><div><span>ADMINISTRATION</span><h1>Properties</h1><p>Property and venue inventory.</p></div><a class="primary" routerLink="/admin/properties/create">Add Property</a></section><section class="data-card">@for (property of properties(); track property.id) { <div class="data-row"><span><b>{{ property.name }}</b><small>{{ property.address }}{{ property.city ? ' • ' + property.city : '' }}</small></span><strong>{{ venueCountForProperty(property.id) }} venues</strong><em>{{ capacityForProperty(property.id) | number }} capacity</em><button type="button" (click)="go('/admin/properties/' + property.id)">Open</button></div> } @empty { <div class="empty-state"><h3>No properties</h3><p>Add a property before creating venues.</p></div> }</section> }
-      @if (view() === 'property-form') { <section class="manage-title"><div><span>PROPERTY</span><h1>Add Property</h1><p>Create a real property record.</p></div></section><form class="data-card form-grid" (ngSubmit)="createProperty()"><label>Name<input name="name" [(ngModel)]="propertyForm.name" required /></label><label>City<input name="city" [(ngModel)]="propertyForm.city" /></label><label class="full">Address<input name="address" [(ngModel)]="propertyForm.address" required /></label><label class="full">Description<textarea name="description" [(ngModel)]="propertyForm.description"></textarea></label><button class="primary" type="submit">Create Property</button></form> }
-      @if (view() === 'property-detail') { @if (selectedProperty(); as property) { <section class="manage-title"><div><span>PROPERTY #{{ property.id }}</span><h1>{{ property.name }}</h1><p>{{ property.address }}</p></div></section><form class="data-card form-grid" (ngSubmit)="createVenue(property.id)"><div class="card-head full"><div><h2>Add Venue</h2><p>Active venues become selectable when an organizer creates an event.</p></div></div><label>Venue Name<input name="venueName" [(ngModel)]="venueForm.name" required /></label><label>Capacity<input name="venueCapacity" type="number" min="1" [(ngModel)]="venueForm.capacity" required /></label><label class="full">Location<input name="venueLocation" [(ngModel)]="venueForm.location" [placeholder]="property.address" /></label><button class="primary" type="submit">Add Venue</button></form><section class="data-card"><h2>Venues</h2>@for (venue of venues(); track venue.id) { @if (venue.propertyId === property.id) { <div class="data-row"><span><b>{{ venue.name }}</b><small>{{ venue.location || property.address }}</small></span><strong>{{ venue.capacity | number }} capacity</strong><em class="status">{{ venue.isActive ? 'Active' : 'Inactive' }}</em></div> } } @if (venueCountForProperty(property.id) === 0) { <div class="empty-state"><p>No venues yet. Use the form above to add the first venue.</p></div> }</section> } }
+      @if (view() === 'venues') {
+        <section class="manage-title">
+          <div>
+            <span>ADMINISTRATION</span>
+            <h1>Venues</h1>
+            <p>Create and view venues used by the event workflow.</p>
+          </div>
+        </section>
+        @if (activeProperties().length === 0) {
+          <div class="notice warning">
+            <b>A property is required first.</b
+            ><span>Create an active property before adding a venue.</span>
+            <div class="setup-links"><a routerLink="/admin/properties/create">Add Property</a></div>
+          </div>
+        }
+        <form class="data-card form-grid" (ngSubmit)="createVenue()">
+          <label
+            >Property<select
+              name="venueProperty"
+              [(ngModel)]="venueForm.propertyId"
+              required
+              [disabled]="activeProperties().length === 0"
+            >
+              <option [ngValue]="0">
+                {{ activeProperties().length ? 'Select property' : 'No properties available' }}
+              </option>
+              @for (property of activeProperties(); track property.id) {
+                <option [ngValue]="property.id">
+                  {{ property.name }} — {{ property.city || property.address }}
+                </option>
+              }
+            </select></label
+          ><label>Venue Name<input name="venueName" [(ngModel)]="venueForm.name" required /></label
+          ><label>Location<input name="venueLocation" [(ngModel)]="venueForm.location" /></label
+          ><label
+            >Capacity<input
+              name="venueCapacity"
+              type="number"
+              min="1"
+              [(ngModel)]="venueForm.capacity"
+              required /></label
+          ><button class="primary" type="submit" [disabled]="activeProperties().length === 0">
+            Add Venue
+          </button>
+        </form>
+        <section class="data-card">
+          <div class="card-head">
+            <div>
+              <h2>All Venues</h2>
+              <p>Active venues are available to organizers while creating events.</p>
+            </div>
+          </div>
+          @for (venue of venues(); track venue.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ venue.name }}</b
+                ><small
+                  >{{ venue.propertyName }} •
+                  {{ venue.location || 'Location not specified' }}</small
+                ></span
+              ><strong>{{ venue.capacity | number }} capacity</strong
+              ><em class="status">{{ venue.isActive ? 'Active' : 'Inactive' }}</em>
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No venues yet</h3>
+              <p>Use the form above to add the first venue.</p>
+            </div>
+          }
+        </section>
+      }
+      @if (view() === 'properties') {
+        <section class="manage-title">
+          <div>
+            <span>ADMINISTRATION</span>
+            <h1>Properties</h1>
+            <p>Property and venue inventory.</p>
+          </div>
+          <a class="primary" routerLink="/admin/properties/create">Add Property</a>
+        </section>
+        <section class="data-card">
+          @for (property of properties(); track property.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ property.name }}</b
+                ><small
+                  >{{ property.address }}{{ property.city ? ' • ' + property.city : '' }}</small
+                ></span
+              ><strong>{{ venueCountForProperty(property.id) }} venues</strong
+              ><em>{{ capacityForProperty(property.id) | number }} capacity</em
+              ><button type="button" (click)="go('/admin/properties/' + property.id)">Open</button>
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No properties</h3>
+              <p>Add a property before creating venues.</p>
+            </div>
+          }
+        </section>
+      }
+      @if (view() === 'property-form') {
+        <section class="manage-title">
+          <div>
+            <span>PROPERTY</span>
+            <h1>Add Property</h1>
+            <p>Create a real property record.</p>
+          </div>
+        </section>
+        <form class="data-card form-grid" (ngSubmit)="createProperty()">
+          <label>Name<input name="name" [(ngModel)]="propertyForm.name" required /></label
+          ><label>City<input name="city" [(ngModel)]="propertyForm.city" /></label
+          ><label class="full"
+            >Address<input name="address" [(ngModel)]="propertyForm.address" required /></label
+          ><label class="full"
+            >Description<textarea
+              name="description"
+              [(ngModel)]="propertyForm.description"
+            ></textarea></label
+          ><button class="primary" type="submit">Create Property</button>
+        </form>
+      }
+      @if (view() === 'property-detail') {
+        @if (selectedProperty(); as property) {
+          <section class="manage-title">
+            <div>
+              <span>PROPERTY #{{ property.id }}</span>
+              <h1>{{ property.name }}</h1>
+              <p>{{ property.address }}</p>
+            </div>
+          </section>
+          <form class="data-card form-grid" (ngSubmit)="createVenue(property.id)">
+            <div class="card-head full">
+              <div>
+                <h2>Add Venue</h2>
+                <p>Active venues become selectable when an organizer creates an event.</p>
+              </div>
+            </div>
+            <label>Venue Name<input name="venueName" [(ngModel)]="venueForm.name" required /></label
+            ><label
+              >Capacity<input
+                name="venueCapacity"
+                type="number"
+                min="1"
+                [(ngModel)]="venueForm.capacity"
+                required /></label
+            ><label class="full"
+              >Location<input
+                name="venueLocation"
+                [(ngModel)]="venueForm.location"
+                [placeholder]="property.address" /></label
+            ><button class="primary" type="submit">Add Venue</button>
+          </form>
+          <section class="data-card">
+            <h2>Venues</h2>
+            @for (venue of venues(); track venue.id) {
+              @if (venue.propertyId === property.id) {
+                <div class="data-row">
+                  <span
+                    ><b>{{ venue.name }}</b
+                    ><small>{{ venue.location || property.address }}</small></span
+                  ><strong>{{ venue.capacity | number }} capacity</strong
+                  ><em class="status">{{ venue.isActive ? 'Active' : 'Inactive' }}</em>
+                </div>
+              }
+            }
+            @if (venueCountForProperty(property.id) === 0) {
+              <div class="empty-state">
+                <p>No venues yet. Use the form above to add the first venue.</p>
+              </div>
+            }
+          </section>
+        }
+      }
 
-      @if (view() === 'organizers') { <section class="manage-title"><div><span>ADMINISTRATION</span><h1>Organizers</h1><p>Verify organizer accounts before operational use.</p></div></section><section class="data-card">@for (organizer of organizers(); track organizer.id) { <div class="data-row"><span><b>{{ organizer.organizationName }}</b><small>{{ organizer.email }} • {{ organizer.username }}</small></span><strong>{{ eventCountForOrganizer(organizer.id) }} events</strong><em class="status">{{ organizer.isVerified ? 'Verified' : 'Pending' }}</em><button type="button" (click)="verifyOrganizer(organizer)">{{ organizer.isVerified ? 'Remove verification' : 'Verify' }}</button></div> } @empty { <div class="empty-state"><h3>No organizers</h3></div> }</section> }
+      @if (view() === 'organizers') {
+        <section class="manage-title">
+          <div>
+            <span>ADMINISTRATION</span>
+            <h1>Organizers</h1>
+            <p>Verify organizer accounts before operational use.</p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (organizer of organizers(); track organizer.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ organizer.organizationName }}</b
+                ><small>{{ organizer.email }} • {{ organizer.username }}</small></span
+              ><strong>{{ eventCountForOrganizer(organizer.id) }} events</strong
+              ><em class="status">{{ organizer.isVerified ? 'Verified' : 'Pending' }}</em
+              ><button type="button" (click)="verifyOrganizer(organizer)">
+                {{ organizer.isVerified ? 'Remove verification' : 'Verify' }}
+              </button>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No organizers</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'users') { <section class="manage-title"><div><span>ADMINISTRATION</span><h1>Users</h1><p>Manage platform account status.</p></div></section><section class="data-card">@for (user of users(); track user.id) { <div class="data-row"><span><b>{{ user.username }}</b><small>{{ user.email }} • Created {{ user.createdAt | date:'mediumDate' }}</small></span><strong>{{ user.role }}</strong><em class="status">{{ user.isActive ? 'Active' : 'Inactive' }}</em><button type="button" (click)="toggleUser(user)">{{ user.isActive ? 'Deactivate' : 'Activate' }}</button></div> } @empty { <div class="empty-state"><h3>No users</h3></div> }</section> }
+      @if (view() === 'users') {
+        <section class="manage-title">
+          <div>
+            <span>ADMINISTRATION</span>
+            <h1>Users</h1>
+            <p>Manage platform account status.</p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (user of users(); track user.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ user.username }}</b
+                ><small
+                  >{{ user.email }} • Created {{ user.createdAt | date: 'mediumDate' }}</small
+                ></span
+              ><strong>{{ user.role }}</strong
+              ><em class="status">{{ user.isActive ? 'Active' : 'Inactive' }}</em
+              ><button type="button" (click)="toggleUser(user)">
+                {{ user.isActive ? 'Deactivate' : 'Activate' }}
+              </button>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No users</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'approvals' || view() === 'admin-approvals' || view() === 'approval-detail') { <section class="manage-title"><div><span>APPROVAL WORKFLOW</span><h1>{{ role() === 'admin' ? 'Pending Event Approvals' : 'My Event Approvals' }}</h1><p>Review state comes from the backend approval workflow.</p></div></section><section class="data-card">@for (approval of approvals(); track approval.id) { <div class="data-row"><span><b>{{ approval.eventName || ('Event #' + approval.eventId) }}</b><small>Requested {{ approval.requestedAt | date:'medium' }}{{ approval.organizerNotes ? ' • ' + approval.organizerNotes : '' }}</small></span><em class="status">{{ approval.status }}</em>@if (role() === 'admin') { <button type="button" (click)="openAction(approval.eventName || 'Event', 'reject', approval.id)">Reject</button><button class="primary" type="button" (click)="openAction(approval.eventName || 'Event', 'approve', approval.id)">Approve</button> }</div> } @empty { <div class="empty-state"><h3>No pending approvals</h3><p>Submitted event requests will appear here.</p></div> }</section> }
+      @if (view() === 'approvals' || view() === 'admin-approvals' || view() === 'approval-detail') {
+        <section class="manage-title">
+          <div>
+            <span>APPROVAL WORKFLOW</span>
+            <h1>{{ role() === 'admin' ? 'Pending Event Approvals' : 'My Event Approvals' }}</h1>
+            <p>Review state comes from the backend approval workflow.</p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (approval of approvals(); track approval.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ approval.eventName || 'Event #' + approval.eventId }}</b
+                ><small
+                  >Requested {{ approval.requestedAt | date: 'medium'
+                  }}{{ approval.organizerNotes ? ' • ' + approval.organizerNotes : '' }}</small
+                ></span
+              ><em class="status">{{ approval.status }}</em>
+              @if (role() === 'admin') {
+                <button
+                  type="button"
+                  (click)="openAction(approval.eventName || 'Event', 'reject', approval.id)"
+                >
+                  Reject</button
+                ><button
+                  class="primary"
+                  type="button"
+                  (click)="openAction(approval.eventName || 'Event', 'approve', approval.id)"
+                >
+                  Approve
+                </button>
+              }
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No pending approvals</h3>
+              <p>Submitted event requests will appear here.</p>
+            </div>
+          }
+        </section>
+      }
 
-      @if (view() === 'admin-bookings' || view() === 'booking-detail' || (role() === 'organizer' && view() === 'event-bookings')) { <section class="manage-title"><div><span>BOOKINGS</span><h1>Reservation Records</h1><p>{{ role() === 'admin' ? 'All platform bookings.' : 'Bookings for your own events.' }}</p></div></section><section class="data-card">@for (booking of bookings(); track booking.id) { <div class="data-row"><span><b>{{ booking.eventName }}</b><small>{{ booking.bookingNumber }} • Customer #{{ booking.customerId }} • {{ booking.createdAtUtc | date:'medium' }}</small></span><em class="status">{{ booking.status }}</em><strong>LKR {{ booking.totalAmount | number }}</strong></div> } @empty { <div class="empty-state"><h3>No bookings</h3><p>Reservation records will appear after customers book.</p></div> }</section> }
+      @if (
+        view() === 'admin-bookings' ||
+        view() === 'booking-detail' ||
+        (role() === 'organizer' && view() === 'event-bookings')
+      ) {
+        <section class="manage-title">
+          <div>
+            <span>BOOKINGS</span>
+            <h1>Reservation Records</h1>
+            <p>
+              {{ role() === 'admin' ? 'All platform bookings.' : 'Bookings for your own events.' }}
+            </p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (booking of bookings(); track booking.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ booking.eventName }}</b
+                ><small
+                  >{{ booking.bookingNumber }} • Customer #{{ booking.customerId }} •
+                  {{ booking.createdAtUtc | date: 'medium' }}</small
+                ></span
+              ><em class="status">{{ booking.status }}</em
+              ><strong>LKR {{ booking.totalAmount | number }}</strong>
+            </div>
+          } @empty {
+            <div class="empty-state">
+              <h3>No bookings</h3>
+              <p>Reservation records will appear after customers book.</p>
+            </div>
+          }
+        </section>
+      }
 
-      @if (view() === 'admin-payments' || view() === 'payment-detail') { <section class="manage-title"><div><span>PAYMENTS</span><h1>Platform Transactions</h1><p>Admin-only payment records.</p></div></section><section class="data-card">@for (payment of payments(); track payment.id) { <div class="data-row"><span><b>{{ payment.transactionReference }}</b><small>Booking #{{ payment.bookingId }} • {{ payment.method }} • {{ payment.createdAtUtc | date:'medium' }}</small></span><em class="status">{{ payment.status }}</em><strong>LKR {{ payment.amount | number }}</strong></div> } @empty { <div class="empty-state"><h3>No payments</h3></div> }</section> }
+      @if (view() === 'admin-payments' || view() === 'payment-detail') {
+        <section class="manage-title">
+          <div>
+            <span>PAYMENTS</span>
+            <h1>Platform Transactions</h1>
+            <p>Admin-only payment records.</p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (payment of payments(); track payment.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ payment.transactionReference }}</b
+                ><small
+                  >Booking #{{ payment.bookingId }} • {{ payment.method }} •
+                  {{ payment.createdAtUtc | date: 'medium' }}</small
+                ></span
+              ><em class="status">{{ payment.status }}</em
+              ><strong>LKR {{ payment.amount | number }}</strong>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No payments</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'admin-parking') { <section class="manage-title"><div><span>PARKING</span><h1>Parking Areas</h1><p>Areas currently configured under venues.</p></div></section><section class="data-card">@for (area of parkingAreas(); track area.id) { <div class="data-row"><span><b>{{ area.name }}</b><small>Venue #{{ area.venueId }} • {{ area.description || 'No description' }}</small></span><strong>{{ area.capacity }} slots</strong><em>{{ area.isActive ? 'Active' : 'Inactive' }}</em></div> } @empty { <div class="empty-state"><h3>No parking areas</h3></div> }</section> }
+      @if (view() === 'admin-parking') {
+        <section class="manage-title">
+          <div>
+            <span>PARKING</span>
+            <h1>Parking Areas</h1>
+            <p>Areas currently configured under venues.</p>
+          </div>
+        </section>
+        <section class="data-card">
+          @for (area of parkingAreas(); track area.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ area.name }}</b
+                ><small
+                  >Venue #{{ area.venueId }} • {{ area.description || 'No description' }}</small
+                ></span
+              ><strong>{{ area.capacity }} slots</strong
+              ><em>{{ area.isActive ? 'Active' : 'Inactive' }}</em>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No parking areas</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'reports' || view() === 'admin-reports') { <section class="manage-title"><div><span>REPORTS</span><h1>Operational Summary</h1><p>Aggregate metrics calculated by backend reporting endpoints.</p></div></section>@if (role() === 'admin' && adminReport(); as report) { <section class="metric-grid"><article><small>Total Bookings</small><b>{{ report.totalBookings }}</b></article><article><small>Confirmed</small><b>{{ report.confirmedBookings }}</b></article><article><small>Seats Reserved</small><b>{{ report.seatsReserved }}</b></article><article><small>Total Revenue</small><b>LKR {{ report.totalRevenue | number }}</b></article></section> } @else { @if (ticketSales(); as sales) { <section class="metric-grid"><article><small>Tickets Sold</small><b>{{ sales.totalTicketsSold }}</b></article><article><small>Ticket Revenue</small><b>LKR {{ sales.totalTicketRevenue | number }}</b></article><article><small>Events Reported</small><b>{{ sales.events.length }}</b></article></section> } } }
+      @if (view() === 'reports' || view() === 'admin-reports') {
+        <section class="manage-title">
+          <div>
+            <span>REPORTS</span>
+            <h1>Operational Summary</h1>
+            <p>Aggregate metrics calculated by backend reporting endpoints.</p>
+          </div>
+        </section>
+        @if (role() === 'admin' && adminReport(); as report) {
+          <section class="metric-grid">
+            <article>
+              <small>Total Bookings</small><b>{{ report.totalBookings }}</b>
+            </article>
+            <article>
+              <small>Confirmed</small><b>{{ report.confirmedBookings }}</b>
+            </article>
+            <article>
+              <small>Seats Reserved</small><b>{{ report.seatsReserved }}</b>
+            </article>
+            <article>
+              <small>Total Revenue</small><b>LKR {{ report.totalRevenue | number }}</b>
+            </article>
+          </section>
+        } @else {
+          @if (ticketSales(); as sales) {
+            <section class="metric-grid">
+              <article>
+                <small>Tickets Sold</small><b>{{ sales.totalTicketsSold }}</b>
+              </article>
+              <article>
+                <small>Ticket Revenue</small><b>LKR {{ sales.totalTicketRevenue | number }}</b>
+              </article>
+              <article>
+                <small>Events Reported</small><b>{{ sales.events.length }}</b>
+              </article>
+            </section>
+          }
+        }
+      }
 
-      @if (view() === 'categories') { <section class="manage-title"><div><span>ADMINISTRATION</span><h1>Event Categories</h1><p>Manage the taxonomy used by event records.</p></div></section><form class="data-card form-grid" (ngSubmit)="createCategory()"><label>Name<input name="categoryName" [(ngModel)]="categoryForm.name" required /></label><label>Description<input name="categoryDescription" [(ngModel)]="categoryForm.description" /></label><button class="primary" type="submit">Add Category</button></form><section class="data-card">@for (category of categories(); track category.id) { <div class="data-row"><span><b>{{ category.name }}</b><small>{{ category.description || 'No description' }}</small></span><strong>{{ eventCountForCategory(category.id) }} events</strong><em>{{ category.isActive ? 'Active' : 'Inactive' }}</em><button type="button" (click)="deleteCategory(category)">Delete</button></div> } @empty { <div class="empty-state"><h3>No categories</h3></div> }</section> }
+      @if (view() === 'categories') {
+        <section class="manage-title">
+          <div>
+            <span>ADMINISTRATION</span>
+            <h1>Event Categories</h1>
+            <p>Manage the taxonomy used by event records.</p>
+          </div>
+        </section>
+        <form class="data-card form-grid" (ngSubmit)="createCategory()">
+          <label>Name<input name="categoryName" [(ngModel)]="categoryForm.name" required /></label
+          ><label
+            >Description<input
+              name="categoryDescription"
+              [(ngModel)]="categoryForm.description" /></label
+          ><button class="primary" type="submit">Add Category</button>
+        </form>
+        <section class="data-card">
+          @for (category of categories(); track category.id) {
+            <div class="data-row">
+              <span
+                ><b>{{ category.name }}</b
+                ><small>{{ category.description || 'No description' }}</small></span
+              ><strong>{{ eventCountForCategory(category.id) }} events</strong
+              ><em>{{ category.isActive ? 'Active' : 'Inactive' }}</em
+              ><button type="button" (click)="deleteCategory(category)">Delete</button>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No categories</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'notifications' || view() === 'admin-notifications') { <section class="manage-title"><div><span>NOTIFICATIONS</span><h1>Workflow Updates</h1><p>Messages generated for the current account.</p></div><button type="button" (click)="markAllNotificationsRead()">Mark all read</button></section><section class="data-card">@for (notification of apiNotifications(); track notification.id) { <div class="data-row" [class.unread]="!notification.isRead"><span><b>{{ notification.title }}</b><small>{{ notification.message }}</small></span><em>{{ (notification.createdAtUtc || notification.createdAt) | date:'medium' }}</em></div> } @empty { <div class="empty-state"><h3>No notifications</h3></div> }</section> }
+      @if (view() === 'notifications' || view() === 'admin-notifications') {
+        <section class="manage-title">
+          <div>
+            <span>NOTIFICATIONS</span>
+            <h1>Workflow Updates</h1>
+            <p>Messages generated for the current account.</p>
+          </div>
+          <button type="button" (click)="markAllNotificationsRead()">Mark all read</button>
+        </section>
+        <section class="data-card">
+          @for (notification of apiNotifications(); track notification.id) {
+            <div class="data-row" [class.unread]="!notification.isRead">
+              <span
+                ><b>{{ notification.title }}</b
+                ><small>{{ notification.message }}</small></span
+              ><em>{{ notification.createdAtUtc || notification.createdAt | date: 'medium' }}</em>
+            </div>
+          } @empty {
+            <div class="empty-state"><h3>No notifications</h3></div>
+          }
+        </section>
+      }
 
-      @if (view() === 'profile') { @if (organizerProfile(); as profile) { <section class="manage-title"><div><span>ORGANIZER PROFILE</span><h1>{{ profile.organizationName }}</h1><p>{{ profile.email }}</p></div><em class="status">{{ profile.isVerified ? 'Verified' : 'Pending verification' }}</em></section><section class="data-card form-grid"><label>Username<input [value]="profile.username" disabled /></label><label>Phone<input [value]="profile.phoneNumber || ''" disabled /></label><label class="full">Address<input [value]="profile.address || ''" disabled /></label><p class="full">The current backend exposes this profile as read-only.</p></section> } }
-      @if (view() === 'settings' || view() === 'admin-settings' || view() === 'organizer-detail') { <section class="data-card"><span>ACCOUNT</span><h1>{{ role() === 'admin' ? 'Administrator Account' : 'Organizer Account' }}</h1><p>Identity and access are managed through authenticated backend endpoints. No unsupported local settings are stored.</p><div class="data-row"><span><b>{{ auth.session()?.username }}</b><small>{{ auth.session()?.email }}</small></span><em>{{ auth.session()?.role }}</em></div></section> }
+      @if (view() === 'profile') {
+        @if (organizerProfile(); as profile) {
+          <section class="manage-title">
+            <div>
+              <span>ORGANIZER PROFILE</span>
+              <h1>{{ profile.organizationName }}</h1>
+              <p>{{ profile.email }}</p>
+            </div>
+            <em class="status">{{ profile.isVerified ? 'Verified' : 'Pending verification' }}</em>
+          </section>
+          <section class="data-card form-grid">
+            <label>Username<input [value]="profile.username" disabled /></label
+            ><label>Phone<input [value]="profile.phoneNumber || ''" disabled /></label
+            ><label class="full">Address<input [value]="profile.address || ''" disabled /></label>
+            <p class="full">The current backend exposes this profile as read-only.</p>
+          </section>
+        }
+      }
+      @if (view() === 'settings' || view() === 'admin-settings' || view() === 'organizer-detail') {
+        <section class="data-card">
+          <span>ACCOUNT</span>
+          <h1>{{ role() === 'admin' ? 'Administrator Account' : 'Organizer Account' }}</h1>
+          <p>
+            Identity and access are managed through authenticated backend endpoints. No unsupported
+            local settings are stored.
+          </p>
+          <div class="data-row">
+            <span
+              ><b>{{ auth.session()?.username }}</b
+              ><small>{{ auth.session()?.email }}</small></span
+            ><em>{{ auth.session()?.role }}</em>
+          </div>
+        </section>
+      }
     </main>
   </section>
 
-  @if (showModal()) { <div class="modal-backdrop"><section class="confirm-modal"><h2>{{ modalMode() | titlecase }} {{ selectedName() }}?</h2><p>This action updates the backend workflow.</p><div><button type="button" (click)="showModal.set(false)">Cancel</button><button class="primary" type="button" (click)="confirmAction()">Confirm</button></div></section></div> }
-  @if (toast()) { <div class="toast">{{ toast() }}</div> }
+  @if (showModal()) {
+    <div class="modal-backdrop">
+      <section class="confirm-modal">
+        <h2>{{ modalMode() | titlecase }} {{ selectedName() }}?</h2>
+        <p>This action updates the backend workflow.</p>
+        <div>
+          <button type="button" (click)="showModal.set(false)">Cancel</button
+          ><button class="primary" type="button" (click)="confirmAction()">Confirm</button>
+        </div>
+      </section>
+    </div>
+  }
+  @if (toast()) {
+    <div class="toast">{{ toast() }}</div>
+  }
 </div>

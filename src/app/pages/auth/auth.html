@@ -1,4 +1,19 @@
-<main class="auth-page">
+<header class="auth-site-nav">
+  <a class="auth-brand" routerLink="/"
+    ><span>✦</span>
+    <div><b>Eventora</b><small>Events • Tickets • Parking</small></div></a
+  >
+  <nav>
+    <a routerLink="/">Home</a><a routerLink="/events">Explore Events</a
+    ><a routerLink="/how-it-works">How It Works</a><a routerLink="/parking">Parking</a>
+  </nav>
+  <div class="auth-nav-actions">
+    <a routerLink="/login">Log In</a
+    ><a class="nav-primary" routerLink="/register">Create Account</a>
+  </div>
+</header>
+
+<main class="auth-page" [class.reverse-auth]="mode === 'reset' && resetStage() === 'request'">
   <section class="auth-visual">
     <span class="sr-only">Event Parking Reservation System</span>
   </section>
@@ -13,18 +28,18 @@
             : mode === 'register'
               ? 'Create Your Account'
               : mode === 'setup'
-                ? 'Set Up Administrator'
-                : 'Reset Password'
+                ? 'Administrator Setup'
+                : 'Reset Your Password'
         }}
       </h1>
       <p>
         {{
           mode === 'login'
             ? loginStage() === 'otp'
-              ? 'Complete the secure email verification step'
-              : 'Sign in to continue to your account'
+              ? 'We sent a 6-digit verification code to your account.'
+              : 'Sign in to continue to events, tickets and parking.'
             : mode === 'register'
-              ? 'Join Event Parking and get started in minutes.'
+              ? 'Join Eventora and keep your event experience together.'
               : mode === 'setup'
                 ? 'Create the first administrator account. This option closes after setup.'
                 : resetStage() === 'request'
@@ -46,8 +61,11 @@
                   name="name"
                   [(ngModel)]="name"
                   placeholder="Enter your full name"
-                /></div></label
-            ><label
+                  required
+                />
+              </div>
+            </label>
+            <label
               >Email Address
               <div>
                 <span>✉</span
@@ -56,21 +74,29 @@
                   [(ngModel)]="email"
                   type="email"
                   placeholder="Enter your email"
-                /></div
-            ></label>
+                  required
+                />
+              </div>
+            </label>
           </div>
-          @if (mode === 'register') { <label
-            >Mobile Number
-            <div>
-              <span>☎</span
-              ><input
-                name="phone"
-                [(ngModel)]="phone"
-                placeholder="Enter your mobile number"
-              /></div
-          ></label> }
+          @if (mode === 'register') {
+            <label
+              >Mobile Number
+              <div>
+                <span>☎</span
+                ><input
+                  name="phone"
+                  [(ngModel)]="phone"
+                  placeholder="Enter your mobile number"
+                  required
+                />
+              </div>
+            </label>
+          }
         }
-        @if (mode !== 'register' && mode !== 'setup' && !(mode === 'login' && loginStage() === 'otp')) {
+        @if (
+          mode !== 'register' && mode !== 'setup' && !(mode === 'login' && loginStage() === 'otp')
+        ) {
           <label
             >Email or Username
             <div>
@@ -79,17 +105,36 @@
                 name="email"
                 [(ngModel)]="email"
                 placeholder="Enter your email or username"
-              /></div
-          ></label>
+                required
+              />
+            </div>
+          </label>
         }
-        @if ((mode === 'reset' && resetStage() === 'change') || (mode === 'login' && loginStage() === 'otp')) {
+        @if (
+          (mode === 'reset' && resetStage() === 'change') ||
+          (mode === 'login' && loginStage() === 'otp')
+        ) {
           <label
             >{{ mode === 'login' ? 'Login OTP' : 'Verification Code' }}
             <div>
-              <span>⌑</span><input name="code" [(ngModel)]="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" /></div
-          ></label>
+              <span>⌑</span
+              ><input
+                name="code"
+                [(ngModel)]="code"
+                inputmode="numeric"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                autocomplete="one-time-code"
+                placeholder="6-digit code"
+                required
+              />
+            </div>
+          </label>
         }
-        @if ((mode !== 'reset' || resetStage() === 'change') && !(mode === 'login' && loginStage() === 'otp')) {
+        @if (
+          (mode !== 'reset' || resetStage() === 'change') &&
+          !(mode === 'login' && loginStage() === 'otp')
+        ) {
           <div class="form-two" [class.single]="mode === 'login'">
             <label
               >Password
@@ -99,10 +144,21 @@
                   name="password"
                   [(ngModel)]="password"
                   [type]="passwordVisible() ? 'text' : 'password'"
-                  [placeholder]="mode === 'reset' || mode === 'setup' ? 'Create new password' : 'Enter your password'"
-                /><button type="button" (click)="passwordVisible.set(!passwordVisible())">◉</button>
-              </div></label
-            >
+                  [placeholder]="
+                    mode === 'reset' || mode === 'setup'
+                      ? 'Create new password'
+                      : 'Enter your password'
+                  "
+                  required
+                /><button
+                  type="button"
+                  (click)="passwordVisible.set(!passwordVisible())"
+                  [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+                >
+                  ◉
+                </button>
+              </div>
+            </label>
             @if (mode !== 'login') {
               <label
                 >Confirm Password
@@ -113,8 +169,10 @@
                     [(ngModel)]="confirm"
                     type="password"
                     placeholder="Confirm password"
-                  /></div
-              ></label>
+                    required
+                  />
+                </div>
+              </label>
             }
           </div>
         }
@@ -123,7 +181,10 @@
             <label class="check"
               ><input type="checkbox" [checked]="remember()" (change)="remember.set(!remember())" />
               Remember me</label
-            ><a [routerLink]="isAdminEntry ? '/admin/reset-password' : '/reset-password'">Forgot Password?</a>
+            >
+            <a [routerLink]="isAdminEntry ? '/admin/reset-password' : '/reset-password'"
+              >Forgot Password?</a
+            >
           </div>
         }
         @if (mode === 'login' && loginStage() === 'otp') {
@@ -134,8 +195,14 @@
         }
         @if (mode === 'register') {
           <label class="terms"
-            ><input type="checkbox" checked /> I agree to the Terms & Conditions and Privacy
-            Policy</label
+            ><input
+              type="checkbox"
+              name="terms"
+              [checked]="acceptedTerms()"
+              (change)="acceptedTerms.set(!acceptedTerms())"
+              required
+            />
+            I agree to the Terms & Conditions and Privacy Policy</label
           >
         }
         <button class="submit" type="submit" [disabled]="loading()">
@@ -143,14 +210,16 @@
             loading()
               ? 'Please wait…'
               : mode === 'login'
-                ? loginStage() === 'otp' ? 'Verify & Sign In' : 'Continue with Email'
-              : mode === 'register'
-                ? 'Create Account'
-                : mode === 'setup'
-                  ? 'Create Administrator'
-                  : resetStage() === 'request'
-                    ? 'Send Verification Code'
-                    : 'Reset Password'
+                ? loginStage() === 'otp'
+                  ? 'Verify & Sign In'
+                  : 'Sign In'
+                : mode === 'register'
+                  ? 'Create Account'
+                  : mode === 'setup'
+                    ? 'Create Administrator'
+                    : resetStage() === 'request'
+                      ? 'Send Reset Code'
+                      : 'Reset Password'
           }}
           →
         </button>
@@ -159,26 +228,45 @@
         }
       </form>
       @if (isAdminEntry && mode === 'login' && adminSetupRequired()) {
-        <p class="switch">First time setup? <a routerLink="/admin/setup">Create administrator</a></p>
+        <p class="switch">
+          First time setup? <a routerLink="/admin/setup">Create administrator</a>
+        </p>
       }
       @if (isAdminEntry && mode !== 'login') {
         <p class="switch"><a routerLink="/admin/login">Back to Admin Sign In</a></p>
       }
       @if (!isAdminEntry) {
-      <p class="switch">
-        {{
-          mode === 'login'
-            ? 'Don’t have an account?'
-            : mode === 'register'
-              ? 'Already have an account?'
-              : 'Remember your password?'
-        }}
-        <a [routerLink]="mode === 'login' ? '/register' : '/login'">{{
-          mode === 'login' ? 'Create Account' : 'Sign In'
-        }}</a>
-      </p>
-      <a class="back" routerLink="/">← Back to Eventora</a>
+        <p class="switch">
+          {{
+            mode === 'login'
+              ? 'Don’t have an account?'
+              : mode === 'register'
+                ? 'Already have an account?'
+                : 'Remember your password?'
+          }}
+          <a [routerLink]="mode === 'login' ? '/register' : '/login'">{{
+            mode === 'login' ? 'Create Account' : 'Sign In'
+          }}</a>
+        </p>
+        <a class="back" routerLink="/">← Back to Eventora</a>
       }
     </article>
   </section>
 </main>
+
+<footer class="auth-site-footer">
+  <div>
+    <a class="auth-brand" routerLink="/"
+      ><span>✦</span>
+      <div><b>Eventora</b><small>Events • Tickets • Parking</small></div></a
+    >
+    <p>Your complete event booking and parking platform.</p>
+  </div>
+  <div>
+    <b>Product</b><a routerLink="/events">Explore Events</a><a routerLink="/parking">Parking</a>
+  </div>
+  <div><b>Support</b><a routerLink="/faq">FAQ</a><a routerLink="/contact">Contact</a></div>
+  <div>
+    <b>Account</b><a routerLink="/login">Login</a><a routerLink="/register">Create Account</a>
+  </div>
+</footer>

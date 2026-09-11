@@ -1,36 +1,39 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; color: #11183f; background: #fbfcff; font-family: 'DM Sans', Arial, sans-serif; }
-button, input, select { font: inherit; }
-button, a { -webkit-tap-highlight-color: transparent; }
-a { color: inherit; }
-
-
-/* === Eventora readability & alignment upgrade v2 === */
-:root {
-  --ui-body-font: 15px;
-  --ui-secondary-font: 13px;
-  --ui-label-font: 13px;
-  --ui-control-font: 14px;
-  --ui-control-height: 46px;
-  --ui-focus-ring: 0 0 0 3px rgba(83, 91, 242, .13);
-}
-html { font-size: 16px; }
-body {
-  font-size: var(--ui-body-font);
-  line-height: 1.5;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-}
-input, select, textarea { font-size: var(--ui-control-font); }
-input::placeholder, textarea::placeholder { opacity: 1; color: #8b93a6; }
-button, input, select, textarea, a { outline-offset: 2px; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 2px solid #6e55e8;
-  box-shadow: var(--ui-focus-ring);
+:root{
+  --ev-blue:#0874f9;
+  --ev-blue-700:#0563db;
+  --ev-blue-50:#eef6ff;
+  --ev-navy:#101d3f;
+  --ev-text:#17213a;
+  --ev-muted:#66758f;
+  --ev-border:#e4eaf2;
+  --ev-surface:#ffffff;
+  --ev-bg:#f6f9fd;
+  --ev-green:#18ad6d;
+  --ev-orange:#f2a33b;
+  --ev-red:#e75361;
+  --ev-shadow:0 8px 24px rgba(24,50,91,.08);
+  --ev-shadow-lg:0 18px 48px rgba(21,50,96,.13);
 }
 
-/* Comfortable form interaction targets. */
-input[type="checkbox"], input[type="radio"] { min-width: 18px; min-height: 18px; }
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ev-bg);color:var(--ev-text);font-family:'DM Sans',Inter,Segoe UI,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+button,a{ -webkit-tap-highlight-color:transparent }
+a{color:inherit}
+::selection{background:#cfe5ff;color:#0c3973}
+
+/* Shared scrollbar used by dense admin/organizer tables. */
+*{scrollbar-width:thin;scrollbar-color:#c9d8eb transparent}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-thumb{background:#c9d8eb;border-radius:999px}
+*::-webkit-scrollbar-track{background:transparent}
+
+/* === Clean UX readability upgrade v2.0 === */
+html{font-size:16px}
+body{font-size:15px;line-height:1.55;letter-spacing:-.005em}
+input,select,textarea,button{font-size:14px}
+input::placeholder,textarea::placeholder{color:#93a0b2;opacity:1}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid rgba(8,116,249,.16);outline-offset:2px}
