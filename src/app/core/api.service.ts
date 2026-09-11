@@ -42,7 +42,7 @@ declare global {
 
 export const API_ROOT =
   (typeof window !== 'undefined' && window.__EVENTORA_API_URL__?.replace(/\/$/, '')) ||
-  'http://localhost:5118/api';
+  'eventparkingapi.runasp.net';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
