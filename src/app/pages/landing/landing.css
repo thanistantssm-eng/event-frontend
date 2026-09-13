@@ -54,3 +54,43 @@ footer{padding:34px 0 20px}.footer-grid{gap:32px}.footer-grid p,.footer-grid a{f
   .parking-photo{min-height:220px;padding:38px 25px}.parking-photo span{font-size:25px}.parking-map{margin:12px}
   .footer-grid{grid-template-columns:1fr 1fr}.footer-grid>div:first-child{grid-column:1/-1}.footer-bottom{gap:12px;flex-wrap:wrap}
 }
+
+/* Premium component pass: Material interaction + Uiverse-style depth. */
+.hero{background:radial-gradient(circle at 72% 18%,rgba(118,92,255,.28),transparent 30%),radial-gradient(circle at 24% 74%,rgba(255,107,53,.13),transparent 34%),linear-gradient(135deg,#101828 0%,#182b5c 56%,#202b48 100%)}
+.nav{border-bottom:1px solid rgba(255,255,255,.1)}
+.brand,.brand small,.nav-links a{color:#f2f4f7}
+.nav-links a:hover,.nav-links .active{color:#b9c4ff}
+.nav-actions .btn-white{color:#f8f9ff;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.24)}
+.brand-mark{background:linear-gradient(135deg,#7a5af8,#3457f1);box-shadow:0 10px 26px rgba(77,92,255,.35)}
+.hero-copy h1{max-width:760px;color:#fff;font-size:clamp(44px,5.2vw,74px);line-height:1.02;letter-spacing:-.055em;text-shadow:0 8px 34px rgba(0,0,0,.18)}
+.hero-copy h1 em{color:#a8b4ff}
+.hero-copy p{max-width:620px;font-size:16px;line-height:1.7;color:#d0d5dd}
+.eyebrow{font-size:12px;letter-spacing:.12em}
+.btn{gap:8px;border-radius:12px;font-size:13px;font-weight:750}
+.btn-primary{background:linear-gradient(135deg,#7a5af8,#3457f1);box-shadow:0 10px 24px rgba(52,87,241,.27)}
+.btn app-icon,.event-body p app-icon,.preview-card div>span app-icon,.trust-row app-icon{vertical-align:-3px}
+.booking-preview{filter:drop-shadow(0 28px 42px rgba(0,0,0,.22))}
+.preview-card{border:1px solid rgba(255,255,255,.74);border-radius:18px;box-shadow:0 16px 38px rgba(16,24,40,.15)}
+.preview-card div>span{display:flex;align-items:center;gap:6px}
+.trust-row{gap:20px}
+.trust-row span{display:flex;align-items:center;gap:7px;color:#eaecf0;font-size:12px}
+.trust-row i{width:8px;height:8px;border-radius:50%;background:#98a2b3;box-shadow:0 0 0 4px rgba(152,162,179,.15)}
+.trust-row i.online{background:#32d583;box-shadow:0 0 0 4px rgba(50,213,131,.18)}
+.search-wrap{margin-top:-42px;border:1px solid rgba(228,231,236,.85);border-radius:20px;box-shadow:0 24px 64px rgba(16,24,40,.16)}
+.search-field,.select-field{min-height:58px;border-radius:13px}
+.search-field input,.select-field select{font-size:14px}
+.search-grid app-icon{color:#667085}
+.event-card{border-radius:20px;border-color:#eaecf0;transition:transform .24s ease,box-shadow .24s ease}
+.event-card:hover{transform:translateY(-6px);box-shadow:0 24px 56px rgba(16,24,40,.15)}
+.event-image{min-height:230px}
+.event-body h3{font-size:18px;letter-spacing:-.025em}
+.event-body p{display:flex;align-items:center;gap:7px;font-size:13px}
+.event-body>div>span,.event-body>div>small{font-size:12px}
+.steps article{border:1px solid #eaecf0;border-radius:18px;background:rgba(255,255,255,.9)}
+.step-icon{display:inline-grid;place-items:center}
+.parking-feature{border-radius:28px;box-shadow:0 30px 80px rgba(16,24,40,.14)}
+.smart-pill{display:inline-flex;align-items:center;gap:7px}
+.role-grid article{border-radius:20px}
+.final-cta{border-radius:28px;background:radial-gradient(circle at 85% 0,rgba(255,255,255,.2),transparent 30%),linear-gradient(135deg,#6941c6,#3457f1)}
+
+@media(max-width:720px){.hero-copy h1{font-size:clamp(38px,11vw,52px)}.hero-copy p{font-size:15px}.search-wrap{margin-top:-24px}.event-image{min-height:210px}}

@@ -2,6 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, ViewEncapsulation, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { filter, forkJoin, of, switchMap } from 'rxjs';
 import { OrderSummary, Stepper } from './ui-parts';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
@@ -20,6 +23,7 @@ import {
   UserNotification,
   Venue,
 } from '../../core/api.models';
+import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
 type EventItem = {
   id: string;
@@ -63,7 +67,7 @@ const emptyEvent: EventItem = {
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary],
+  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary, UntitledIcon, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './portal.html',
   styleUrl: './portal.css',
   encapsulation: ViewEncapsulation.None,
@@ -170,6 +174,7 @@ export class Portal {
     private readonly router: Router,
     private readonly api: ApiService,
     protected readonly auth: AuthService,
+    private readonly snackBar: MatSnackBar,
   ) {
     this.syncView(this.router.url);
     this.loadInitialData();
@@ -379,6 +384,7 @@ export class Portal {
   }
   protected flash(message: string): void {
     this.toast.set(message);
+    this.snackBar.open(message, 'Dismiss', { duration: 3200, horizontalPosition: 'right', verticalPosition: 'top' });
     window.setTimeout(() => this.toast.set(''), 2600);
   }
   protected spritePosition(index: number): string {

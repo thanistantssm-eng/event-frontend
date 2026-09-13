@@ -20,15 +20,22 @@
 - Admin: green
 - Existing premium event and parking imagery reused to keep one product family
 
+## Backend integration and premium UI pass (Sep 13, 2026)
+
+- Audited the ASP.NET Core controllers and DTOs against the Angular API service and role flows.
+- Verified the deployed health, venue, category and published-event endpoints.
+- Added Angular Material/CDK interaction components and a shared premium design-token layer.
+- Added a reusable Angular adapter for official free Untitled UI SVG icons.
+- Added Uiverse-inspired glow, hover and motion primitives without introducing React dependencies.
+- Corrected organizer registration to submit a separate organization name and optional business address.
+- Lazy-loaded customer and management areas to reduce the initial production bundle.
+
 ## Verification
 
-- Checked TypeScript source syntax with the available compiler in no-resolve mode; no non-module diagnostics were returned.
-- Checked major edited templates for balanced structural tags and template references.
-- Full `ng build` was not possible in the packaging environment because the existing Angular 22.1.7 dependencies require a newer Node runtime than the container provides.
-
-## Next integration step
-
-Replace demo arrays/session role state with typed Angular services calling the ASP.NET Core API, while keeping these screens/routes and the existing UI system intact.
+- `npm run build` passes with no bundle-budget warning.
+- `npm test -- --watch=false` passes.
+- Desktop and mobile browser checks pass for landing, published events and organizer registration.
+- Published event and catalogue records load from the deployed ASP.NET Core API.
 
 ## Readability & Alignment Pass (Sep 6, 2026)
 

@@ -1,18 +1,26 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRippleModule } from '@angular/material/core';
+import { UntitledIcon } from '../untitled-icon/untitled-icon';
 
 @Component({
   selector: 'app-ui-state',
   standalone: true,
+  imports: [MatProgressSpinnerModule, MatRippleModule, UntitledIcon],
   template: `
     @if (type === 'loading') {
-      <div class="skeleton" aria-label="Loading"><i></i><i></i><i></i><i></i></div>
+      <div class="loading-state" role="status" aria-label="Loading">
+        <mat-spinner diameter="34" />
+        <span>Loading live data…</span>
+      </div>
+      <div class="skeleton" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     } @else {
       <div class="state" [class.error]="type === 'error'">
-        <span>{{ type === 'error' ? '!' : '◇' }}</span>
+        <span><app-icon [name]="type === 'error' ? 'help-circle' : 'ticket-01'" [size]="24" /></span>
         <h3>{{ title }}</h3>
         <p>{{ message }}</p>
         @if (actionLabel) {
-          <button type="button" (click)="action.emit()">{{ actionLabel }}</button>
+          <button matRipple type="button" class="ev-interactive" (click)="action.emit()">{{ actionLabel }}</button>
         }
       </div>
     }
@@ -26,6 +34,16 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
         display: grid;
         gap: 10px;
         padding: 16px;
+      }
+      .loading-state {
+        padding: 28px 16px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: #667085;
+        font-size: 14px;
+        font-weight: 700;
       }
       .skeleton i {
         height: 54px;
@@ -61,15 +79,15 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
       .state p {
         margin: 0 auto 14px;
         max-width: 430px;
-        font-size: 10px;
+        font-size: 14px;
       }
       .state button {
         padding: 9px 14px;
         border: 0;
-        border-radius: 9px;
-        background: #6436dc;
+        border-radius: 10px;
+        background: #3457f1;
         color: #fff;
-        font-size: 9px;
+        font-size: 13px;
         font-weight: 800;
       }
       @keyframes shimmer {

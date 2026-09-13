@@ -2,10 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin } from 'rxjs';
 import { EventRecord, ParkingSlot, TicketType, Venue } from '../../core/api.models';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { UiState } from '../../shared/ui-state/ui-state';
+import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
 type PublicEvent = {
   id: number;
@@ -24,7 +27,7 @@ type PublicEvent = {
 @Component({
   selector: 'app-public-pages',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, UiState],
+  imports: [CommonModule, FormsModule, RouterLink, UiState, UntitledIcon, MatRippleModule, MatTooltipModule],
   templateUrl: './public-pages.html',
   styleUrl: './public-pages.css',
 })

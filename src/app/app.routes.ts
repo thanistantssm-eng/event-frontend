@@ -2,10 +2,11 @@ import { Routes } from '@angular/router';
 import { Landing } from './pages/landing/landing';
 import { Auth } from './pages/auth/auth';
 import { NotFound } from './pages/not-found/not-found';
-import { Portal } from './pages/portal/portal';
-import { Management } from './pages/management/management';
 import { PublicPages } from './pages/public-pages/public-pages';
 import { adminGuard, customerGuard, organizerGuard, publicEntryGuard } from './core/auth.guard';
+
+const loadPortal = () => import('./pages/portal/portal').then((module) => module.Portal);
+const loadManagement = () => import('./pages/management/management').then((module) => module.Management);
 
 const organizerPaths = [
   'organizer',
@@ -86,61 +87,61 @@ export const routes: Routes = [
   // Existing customer flow kept intact.
   {
     path: 'app/dashboard',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Dashboard | Event Parking',
   },
   {
     path: 'app/events',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Discover Events | Event Parking',
   },
   {
     path: 'app/checkout',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Checkout | Event Parking',
   },
   {
     path: 'app/payment',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment | Event Parking',
   },
   {
     path: 'app/confirmed',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Booking Confirmed | Event Parking',
   },
   {
     path: 'app/bookings',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'My Bookings | Event Parking',
   },
   {
     path: 'app/parking',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'My Parking | Event Parking',
   },
   {
     path: 'app/payments',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment History | Event Parking',
   },
   {
     path: 'app/payments/receipt',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment Receipt | Event Parking',
   },
   {
     path: 'app/notifications',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Notifications | Event Parking',
   },
@@ -148,127 +149,127 @@ export const routes: Routes = [
   // Role-based customer aliases matching the project route specification.
   {
     path: 'customer/dashboard',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Customer Dashboard | Event Parking',
   },
   {
     path: 'customer/events',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Discover Events | Event Parking',
   },
   {
     path: 'customer/events/:id',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Event Details | Event Parking',
   },
   {
     path: 'customer/bookings',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'My Bookings | Event Parking',
   },
   {
     path: 'customer/bookings/:id',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Booking Details | Event Parking',
   },
   {
     path: 'customer/parking',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'My Parking | Event Parking',
   },
   {
     path: 'customer/payments',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payments | Event Parking',
   },
   {
     path: 'customer/payment-history',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment History | Event Parking',
   },
   {
     path: 'customer/payments/receipt',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment Receipt | Event Parking',
   },
   {
     path: 'customer/notifications',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Notifications | Event Parking',
   },
   {
     path: 'customer/profile',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Profile | Event Parking',
   },
   {
     path: 'customer/settings',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Settings | Event Parking',
   },
   {
     path: 'customer/support',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Support | Event Parking',
   },
   {
     path: 'customer/favorites',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Favorites | Event Parking',
   },
   {
     path: 'customer/booking/tickets/:eventId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Select Tickets | Event Parking',
   },
   {
     path: 'customer/booking/seats/:eventId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Select Seats | Event Parking',
   },
   {
     path: 'customer/booking/parking/:eventId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Select Parking | Event Parking',
   },
   {
     path: 'customer/booking/summary/:eventId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Booking Summary | Event Parking',
   },
   {
     path: 'customer/booking/payment/:eventId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Payment | Event Parking',
   },
   {
     path: 'customer/booking/success/:bookingId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Booking Confirmed | Event Parking',
   },
   {
     path: 'customer/booking/ticket/:bookingId',
-    component: Portal,
+    loadComponent: loadPortal,
     canActivate: [customerGuard],
     title: 'Ticket & QR | Event Parking',
   },
@@ -276,13 +277,13 @@ export const routes: Routes = [
   // Role-based management areas.
   ...organizerPaths.map((path) => ({
     path,
-    component: Management,
+    loadComponent: loadManagement,
     canActivate: [organizerGuard],
     title: 'Organizer | Event Parking',
   })),
   ...adminPaths.map((path) => ({
     path,
-    component: Management,
+    loadComponent: loadManagement,
     canActivate: [adminGuard],
     title: 'Admin | Event Parking',
   })),

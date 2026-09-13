@@ -1,9 +1,12 @@
 import { Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { catchError, forkJoin, of } from 'rxjs';
 import { EventRecord, Venue } from '../../core/api.models';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { UiState } from '../../shared/ui-state/ui-state';
+import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
 type LandingEvent = {
   id: number;
@@ -21,7 +24,7 @@ type LandingEvent = {
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [RouterLink, UiState],
+  imports: [RouterLink, UiState, UntitledIcon, MatRippleModule, MatTooltipModule],
   styleUrl: './landing.css',
   templateUrl: './landing.html',
 })
@@ -35,6 +38,7 @@ export class Landing {
   protected readonly loadError = signal('');
   protected readonly events = signal<LandingEvent[]>([]);
   protected readonly venues = signal<string[]>([]);
+  protected readonly apiOnline = signal(false);
   protected readonly categories = computed(() => [
     ...new Set(['All Categories', ...this.events().map((event) => event.category)]),
   ]);
@@ -97,8 +101,10 @@ export class Landing {
     forkJoin({
       events: this.api.events({ status: 'Published' }),
       venues: this.api.venues(),
+      health: this.api.health().pipe(catchError(() => of({ status: 'unavailable' }))),
     }).subscribe({
-      next: ({ events, venues }) => {
+      next: ({ events, venues, health }) => {
+        this.apiOnline.set(health.status === 'ok');
         this.events.set(events.map((event) => this.mapEvent(event, venues)));
         this.venues.set([
           ...new Set(venues.filter((venue) => venue.isActive).map((venue) => venue.name)),

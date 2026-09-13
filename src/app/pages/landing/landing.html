@@ -4,7 +4,7 @@
       <span class="brand-mark">✦</span>
       <span><strong>Eventora</strong><small>Events • Tickets • Parking</small></span>
     </a>
-    <button class="menu-toggle" type="button" (click)="menuOpen.set(!menuOpen())">☰</button>
+    <button matRipple class="menu-toggle" type="button" (click)="menuOpen.set(!menuOpen())" aria-label="Toggle navigation"><app-icon name="menu-01" /></button>
     <div class="nav-links" [class.open]="menuOpen()">
       <a class="active" href="#home">Home</a>
       <a routerLink="/events">Events</a>
@@ -14,9 +14,9 @@
       <a routerLink="/contact">Contact</a>
     </div>
     <div class="nav-actions">
-      <button class="icon-button" type="button" aria-label="Search" (click)="focusSearch()">⌕</button>
-      <a class="btn btn-white" routerLink="/login">Log In</a>
-      <a class="btn btn-primary" routerLink="/register">Create Account</a>
+      <button matRipple matTooltip="Search events" class="icon-button" type="button" aria-label="Search" (click)="focusSearch()"><app-icon name="search-lg" /></button>
+      <a matRipple class="btn btn-white" routerLink="/login">Log In</a>
+      <a matRipple class="btn btn-primary ev-interactive" routerLink="/register">Create Account</a>
     </div>
   </nav>
 
@@ -26,22 +26,22 @@
       <h1>Book the Event.<br />Reserve Your Seat.<br /><em>Park Without Stress.</em></h1>
       <p>Discover published events, choose available tickets and parking, and manage everything from one secure account.</p>
       <div class="hero-buttons">
-        <a class="btn btn-primary btn-large" routerLink="/events">Explore Events <span>→</span></a>
-        <a class="btn btn-outline btn-large" href="#how">How It Works</a>
+        <a matRipple class="btn btn-primary btn-large ev-interactive" routerLink="/events">Explore Events <app-icon name="arrow-right" /></a>
+        <a matRipple class="btn btn-outline btn-large" href="#how">How It Works</a>
       </div>
-      <div class="trust-row"><span>● Secure Booking</span><span>● Live Availability</span><span>● Optional Parking</span></div>
+      <div class="trust-row"><span><app-icon name="shield-tick" /> Secure Booking</span><span><i [class.online]="apiOnline()"></i> {{ apiOnline() ? 'API connected' : 'Live Availability' }}</span><span><app-icon name="car-01" /> Optional Parking</span></div>
     </div>
 
     <div class="booking-preview" aria-label="Published event preview">
       @if (heroEvent(); as event) {
         <div class="preview-card">
-          <span class="preview-icon pink">♫</span>
-          <div><small>Next Published Event</small><strong>{{ event.title }}</strong><span>◷ {{ event.dateTime }}</span><span>⌖ {{ event.venue }}</span></div>
+          <span class="preview-icon pink"><app-icon name="calendar" /></span>
+          <div><small>Next Published Event</small><strong>{{ event.title }}</strong><span><app-icon name="calendar" /> {{ event.dateTime }}</span><span><app-icon name="marker-pin-01" /> {{ event.venue }}</span></div>
           <a [routerLink]="['/events', event.id]">→</a>
         </div>
         <div class="preview-pair">
-          <div class="preview-card"><span class="preview-icon violet">◆</span><div><small>Tickets</small><strong>{{ event.ticketType }}</strong><span>From {{ event.price }}</span></div></div>
-          <div class="preview-card"><span class="preview-icon green">P</span><div><small>Parking</small><strong>Optional</strong><span>Live availability at booking</span></div></div>
+          <div class="preview-card"><span class="preview-icon violet"><app-icon name="ticket-01" /></span><div><small>Tickets</small><strong>{{ event.ticketType }}</strong><span>From {{ event.price }}</span></div></div>
+          <div class="preview-card"><span class="preview-icon green"><app-icon name="car-01" /></span><div><small>Parking</small><strong>Optional</strong><span>Live availability at booking</span></div></div>
         </div>
       } @else {
         <div class="preview-card"><span class="preview-icon violet">◇</span><div><small>Published events</small><strong>Nothing scheduled yet</strong><span>New events will appear after admin publication.</span></div></div>
@@ -54,10 +54,10 @@
 <main>
   <section class="search-wrap shell" aria-label="Find events">
     <div class="search-grid">
-      <label class="search-field"><span>⌕</span><input [value]="query()" (input)="updateQuery($event)" placeholder="Search published events or venues..." /></label>
-      <label class="select-field"><span>⌖</span><small>Location / Venue</small><select [value]="selectedVenue()" (change)="updateVenue($event)"><option>All Locations</option>@for (venue of venues(); track venue) { <option>{{ venue }}</option> }</select></label>
-      <label class="select-field"><span>▦</span><small>Category</small><select [value]="selectedCategory()" (change)="updateCategory($event)">@for (category of categories(); track category) { <option>{{ category }}</option> }</select></label>
-      <button class="btn btn-primary find-btn" type="button" (click)="findEvents()">Find Events →</button>
+      <label class="search-field"><span><app-icon name="search-lg" /></span><input [value]="query()" (input)="updateQuery($event)" placeholder="Search published events or venues..." /></label>
+      <label class="select-field"><span><app-icon name="marker-pin-01" /></span><small>Location / Venue</small><select [value]="selectedVenue()" (change)="updateVenue($event)"><option>All Locations</option>@for (venue of venues(); track venue) { <option>{{ venue }}</option> }</select></label>
+      <label class="select-field"><span><app-icon name="ticket-01" /></span><small>Category</small><select [value]="selectedCategory()" (change)="updateCategory($event)">@for (category of categories(); track category) { <option>{{ category }}</option> }</select></label>
+      <button matRipple class="btn btn-primary find-btn ev-interactive" type="button" (click)="findEvents()">Find Events <app-icon name="arrow-right" /></button>
     </div>
     <div class="category-row"><b>Available Categories:</b> @for (category of categories().slice(1); track category) { <button type="button" (click)="chooseCategory(category)">{{ category }}</button> } @empty { <span>Categories will appear with published events.</span> }</div>
   </section>
@@ -72,12 +72,12 @@
     } @else {
       <div class="event-grid">
         @for (event of filteredEvents(); track event.id) {
-          <article class="event-card">
+          <article matRipple class="event-card ev-glow">
             <div class="event-image" [style.background-image]="'url(' + event.posterUrl + ')'" [style.background-size]="'cover'" [style.background-position]="'center'">
               <span class="date-badge"><b>{{ event.day }}</b>{{ event.month }}</span>
               <span class="category-badge">{{ event.category }}</span>
             </div>
-            <div class="event-body"><h3>{{ event.title }}</h3><p>⌖ {{ event.venue }}</p><p>◷ {{ event.dateTime }}</p><div><span>From <strong>{{ event.price }}</strong></span><small>{{ event.ticketType }}</small></div><a class="btn btn-soft" [routerLink]="['/events', event.id]">View Event →</a></div>
+            <div class="event-body"><h3>{{ event.title }}</h3><p><app-icon name="marker-pin-01" /> {{ event.venue }}</p><p><app-icon name="calendar" /> {{ event.dateTime }}</p><div><span>From <strong>{{ event.price }}</strong></span><small>{{ event.ticketType }}</small></div><a matRipple class="btn btn-soft" [routerLink]="['/events', event.id]">View Event <app-icon name="arrow-right" /></a></div>
           </article>
         } @empty {
           <app-ui-state class="empty-state" type="empty" title="No published events" message="Events will appear here after they are approved and published." />
@@ -89,24 +89,24 @@
   <section class="section how shell" id="how">
     <div class="section-head"><div><h2>From Event to Entry in <em>Minutes</em></h2><p>A clear, API-backed booking experience.</p></div></div>
     <div class="steps">
-      <article><span class="step-number">1</span><b class="step-icon">⌕</b><h3>Discover</h3><p>Browse events that are currently published.</p></article>
-      <article><span class="step-number">2</span><b class="step-icon violet">◆</b><h3>Choose Ticket / Seat</h3><p>Select a real ticket and an available seat when required.</p></article>
-      <article><span class="step-number">3</span><b class="step-icon green">P</b><h3>Reserve Parking</h3><p>Add an available parking slot when needed.</p></article>
-      <article><span class="step-number">4</span><b class="step-icon blue">▣</b><h3>Pay & Get QR</h3><p>Confirm payment with OTP and receive the booking QR.</p></article>
+      <article class="ev-glow"><span class="step-number">1</span><b class="step-icon"><app-icon name="search-lg" /></b><h3>Discover</h3><p>Browse events that are currently published.</p></article>
+      <article class="ev-glow"><span class="step-number">2</span><b class="step-icon violet"><app-icon name="ticket-01" /></b><h3>Choose Ticket / Seat</h3><p>Select a real ticket and an available seat when required.</p></article>
+      <article class="ev-glow"><span class="step-number">3</span><b class="step-icon green"><app-icon name="car-01" /></b><h3>Reserve Parking</h3><p>Add an available parking slot when needed.</p></article>
+      <article class="ev-glow"><span class="step-number">4</span><b class="step-icon blue"><app-icon name="qr-code-01" /></b><h3>Pay & Get QR</h3><p>Confirm payment with OTP and receive the booking QR.</p></article>
     </div>
   </section>
 
   <section class="parking-feature shell" id="parking">
     <div class="parking-photo"><span>PARK<br />SMART.<br /><em>EVENT<br />HAPPIER.</em></span></div>
-    <div class="parking-copy"><span class="smart-pill">🚘 Smart Event Parking</span><h2>Reserve only when real slots are available.</h2><p>Parking options are loaded for the selected published event and stored with the booking.</p><ul><li>Backend availability</li><li>Event-linked areas</li><li>Optional selection</li><li>Released on cancellation</li></ul><a class="btn btn-primary" routerLink="/parking">How Parking Works →</a></div>
+    <div class="parking-copy"><span class="smart-pill"><app-icon name="car-01" [size]="16" /> Smart Event Parking</span><h2>Reserve only when real slots are available.</h2><p>Parking options are loaded for the selected published event and stored with the booking.</p><ul><li>Backend availability</li><li>Event-linked areas</li><li>Optional selection</li><li>Released on cancellation</li></ul><a class="btn btn-primary" routerLink="/parking">How Parking Works →</a></div>
     <div class="parking-map" aria-label="Parking workflow illustration"><div class="preview-card"><span class="preview-icon green">1</span><div><strong>Select an event</strong><span>Published events only</span></div></div><div class="preview-card"><span class="preview-icon violet">2</span><div><strong>Check availability</strong><span>Live slots from the API</span></div></div><div class="preview-card"><span class="preview-icon blue">3</span><div><strong>Reserve securely</strong><span>Stored with your booking</span></div></div></div>
   </section>
 
   <section class="section shell roles" id="roles">
     <div class="section-head"><div><h2>Built for <em>Customers & Organizers</em></h2><p>The public application serves event discovery and event operations.</p></div></div>
     <div class="role-grid two">
-      <article class="featured"><span class="role-icon">♟</span><div><h3>Customer</h3><p>Discover events and manage your own bookings.</p></div><a class="btn btn-primary" routerLink="/register">Create Customer Account →</a></article>
-      <article><span class="role-icon pink">♟</span><div><h3>Organizer</h3><p>Create and manage events owned by your organization.</p></div><a class="btn btn-soft" [routerLink]="['/register']" [queryParams]="{ role: 'organizer' }">Create Organizer Account →</a><a class="btn btn-soft" [routerLink]="['/login']" [queryParams]="{ role: 'organizer' }">Organizer Login →</a></article>
+      <article class="featured"><span class="role-icon"><app-icon name="user-01" [size]="24" /></span><div><h3>Customer</h3><p>Discover events and manage your own bookings.</p></div><a class="btn btn-primary" routerLink="/register">Create Customer Account →</a></article>
+      <article><span class="role-icon pink"><app-icon name="building-02" [size]="24" /></span><div><h3>Organizer</h3><p>Create and manage events owned by your organization.</p></div><a class="btn btn-soft" [routerLink]="['/register']" [queryParams]="{ role: 'organizer' }">Create Organizer Account →</a><a class="btn btn-soft" [routerLink]="['/login']" [queryParams]="{ role: 'organizer' }">Organizer Login →</a></article>
     </div>
   </section>
 

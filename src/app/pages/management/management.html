@@ -16,24 +16,25 @@
     >
     <nav>
       @for (item of role() === 'admin' ? adminNav : organizerNav; track item[1]) {
-        <a [routerLink]="item[1]" [class.active]="isActive(item[1])"
-          ><i>{{ item[2] }}</i
+        <a matRipple [routerLink]="item[1]" [class.active]="isActive(item[1])"
+          ><i><app-icon [name]="item[2]" /></i
           >{{ item[0] }}</a
         >
       }
     </nav>
     <button
+      matRipple
       type="button"
       class="signout"
       (click)="auth.signOut(); go(role() === 'admin' ? '/admin/login' : '/login')"
     >
-      ↪ Sign Out
+      <app-icon name="log-out-01" /> Sign Out
     </button>
   </aside>
 
   <section class="manage-main">
     <header class="manage-top">
-      <button type="button" (click)="sidebarOpen.set(!sidebarOpen())">☰</button>
+      <button matRipple matTooltip="Open navigation" type="button" (click)="sidebarOpen.set(!sidebarOpen())"><app-icon name="menu-01" /></button>
       <div>
         <b>{{
           role() === 'admin'
@@ -44,7 +45,7 @@
         }}</b
         ><small>{{ auth.session()?.email }}</small>
       </div>
-      <button type="button" (click)="goToNotifications()">♢</button
+      <button matRipple matTooltip="Notifications" type="button" (click)="goToNotifications()"><app-icon name="bell-01" /></button
       ><button type="button" (click)="goToAccount()">
         {{ (auth.session()?.username || 'U').charAt(0) }}
       </button>
@@ -1050,8 +1051,5 @@
         </div>
       </section>
     </div>
-  }
-  @if (toast()) {
-    <div class="toast">{{ toast() }}</div>
   }
 </div>

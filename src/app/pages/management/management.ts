@@ -2,6 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { filter, finalize, forkJoin } from 'rxjs';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -25,6 +28,7 @@ import {
   User,
   Venue,
 } from '../../core/api.models';
+import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
 type Role = 'organizer' | 'admin';
 type RowStatus =
@@ -56,7 +60,7 @@ type EventRow = {
 @Component({
   selector: 'app-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, UntitledIcon, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './management.html',
   styleUrl: './management.css',
 })
@@ -152,37 +156,38 @@ export class Management {
   });
 
   protected readonly adminNav = [
-    ['Dashboard', '/admin/dashboard', '⌂'],
-    ['Properties', '/admin/properties', '▥'],
-    ['Venues', '/admin/venues', '⌖'],
-    ['Organizers', '/admin/organizers', '♙'],
-    ['Users', '/admin/users', '♟'],
-    ['Events', '/admin/events', '▣'],
-    ['Approvals', '/admin/approvals', '✓'],
-    ['Bookings', '/admin/bookings', '◆'],
-    ['Payments', '/admin/payments', '▤'],
-    ['Parking', '/admin/parking', 'Ⓟ'],
-    ['Reports', '/admin/reports', '▥'],
-    ['Categories', '/admin/categories', '◈'],
-    ['Notifications', '/admin/notifications', '♢'],
-    ['Settings', '/admin/settings', '⚙'],
+    ['Dashboard', '/admin/dashboard', 'home-line'],
+    ['Properties', '/admin/properties', 'building-02'],
+    ['Venues', '/admin/venues', 'marker-pin-01'],
+    ['Organizers', '/admin/organizers', 'users-01'],
+    ['Users', '/admin/users', 'user-01'],
+    ['Events', '/admin/events', 'calendar'],
+    ['Approvals', '/admin/approvals', 'check-circle'],
+    ['Bookings', '/admin/bookings', 'ticket-01'],
+    ['Payments', '/admin/payments', 'credit-card-01'],
+    ['Parking', '/admin/parking', 'car-01'],
+    ['Reports', '/admin/reports', 'bar-chart-square-02'],
+    ['Categories', '/admin/categories', 'ticket-01'],
+    ['Notifications', '/admin/notifications', 'bell-01'],
+    ['Settings', '/admin/settings', 'settings-01'],
   ];
   protected readonly organizerNav = [
-    ['Dashboard', '/organizer/dashboard', '⌂'],
-    ['My Events', '/organizer/my-events', '▣'],
-    ['Create Event', '/organizer/events/create/type', '＋'],
-    ['Approvals', '/organizer/approvals', '✓'],
-    ['Bookings', '/organizer/bookings', '◆'],
-    ['Reports', '/organizer/reports', '▥'],
-    ['Notifications', '/organizer/notifications', '♢'],
-    ['Profile', '/organizer/profile', '♙'],
-    ['Settings', '/organizer/settings', '⚙'],
+    ['Dashboard', '/organizer/dashboard', 'home-line'],
+    ['My Events', '/organizer/my-events', 'calendar'],
+    ['Create Event', '/organizer/events/create/type', 'plus'],
+    ['Approvals', '/organizer/approvals', 'check-circle'],
+    ['Bookings', '/organizer/bookings', 'ticket-01'],
+    ['Reports', '/organizer/reports', 'bar-chart-square-02'],
+    ['Notifications', '/organizer/notifications', 'bell-01'],
+    ['Profile', '/organizer/profile', 'user-01'],
+    ['Settings', '/organizer/settings', 'settings-01'],
   ];
 
   constructor(
     protected readonly router: Router,
     private readonly api: ApiService,
     protected readonly auth: AuthService,
+    private readonly snackBar: MatSnackBar,
   ) {
     this.sync(this.router.url);
     this.loadData();
@@ -291,6 +296,7 @@ export class Management {
   }
   protected flash(message: string): void {
     this.toast.set(message);
+    this.snackBar.open(message, 'Dismiss', { duration: 3200, horizontalPosition: 'right', verticalPosition: 'top' });
     window.setTimeout(() => this.toast.set(''), 2200);
   }
   protected openAction(

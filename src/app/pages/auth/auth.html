@@ -18,9 +18,9 @@
     <span class="sr-only">Event Parking Reservation System</span>
   </section>
   <section class="auth-form-panel">
-    <button class="language" type="button" (click)="chooseLanguage()">◉ English⌄</button>
+    <button matRipple matTooltip="Language selector" class="language" type="button" (click)="chooseLanguage()">English</button>
     <article class="auth-card" [class.register-card]="mode === 'register' || mode === 'setup'">
-      <span class="auth-icon">{{ mode === 'reset' ? '⌑' : '♙' }}</span>
+      <span class="auth-icon"><app-icon [name]="mode === 'reset' ? 'shield-tick' : 'user-01'" [size]="24" /></span>
       <h1>
         {{
           mode === 'login'
@@ -54,13 +54,14 @@
         @if (mode === 'register' || mode === 'setup') {
           <div class="form-two">
             <label
-              >Full Name
+              >{{ roleLabel === 'Organizer' ? 'Username' : 'Full Name' }}
               <div>
-                <span>♙</span
+                <span><app-icon name="user-01" /></span
                 ><input
                   name="name"
                   [(ngModel)]="name"
                   placeholder="Enter your full name"
+                  minlength="3"
                   required
                 />
               </div>
@@ -68,7 +69,7 @@
             <label
               >Email Address
               <div>
-                <span>✉</span
+                <span><app-icon name="user-01" /></span
                 ><input
                   name="email"
                   [(ngModel)]="email"
@@ -80,10 +81,13 @@
             </label>
           </div>
           @if (mode === 'register') {
+            @if (roleLabel === 'Organizer') {
+              <label>Organization Name<div><span><app-icon name="building-02" /></span><input name="organizationName" [(ngModel)]="organizationName" placeholder="Your organization" required /></div></label>
+            }
             <label
               >Mobile Number
               <div>
-                <span>☎</span
+                <span><app-icon name="user-01" /></span
                 ><input
                   name="phone"
                   [(ngModel)]="phone"
@@ -92,6 +96,9 @@
                 />
               </div>
             </label>
+            @if (roleLabel === 'Organizer') {
+              <label>Business Address <span class="optional">Optional</span><div><span><app-icon name="marker-pin-01" /></span><input name="address" [(ngModel)]="address" placeholder="Organization address" /></div></label>
+            }
           }
         }
         @if (
@@ -100,7 +107,7 @@
           <label
             >Email or Username
             <div>
-              <span>✉</span
+              <span><app-icon name="user-01" /></span
               ><input
                 name="email"
                 [(ngModel)]="email"
@@ -139,7 +146,7 @@
             <label
               >Password
               <div>
-                <span>▣</span
+                <span><app-icon name="shield-tick" /></span
                 ><input
                   name="password"
                   [(ngModel)]="password"
@@ -149,13 +156,15 @@
                       ? 'Create new password'
                       : 'Enter your password'
                   "
+                  minlength="8"
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,64}"
                   required
                 /><button
                   type="button"
                   (click)="passwordVisible.set(!passwordVisible())"
                   [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
                 >
-                  ◉
+                  {{ passwordVisible() ? 'Hide' : 'Show' }}
                 </button>
               </div>
             </label>
@@ -163,12 +172,13 @@
               <label
                 >Confirm Password
                 <div>
-                  <span>▣</span
+                  <span><app-icon name="shield-tick" /></span
                   ><input
                     name="confirm"
                     [(ngModel)]="confirm"
                     type="password"
                     placeholder="Confirm password"
+                    minlength="8"
                     required
                   />
                 </div>
@@ -205,7 +215,8 @@
             I agree to the Terms & Conditions and Privacy Policy</label
           >
         }
-        <button class="submit" type="submit" [disabled]="loading()">
+        <button matRipple class="submit ev-interactive" type="submit" [disabled]="loading()">
+          @if (loading()) { <mat-spinner diameter="18" /> }
           {{
             loading()
               ? 'Please wait…'
@@ -221,7 +232,7 @@
                       ? 'Send Reset Code'
                       : 'Reset Password'
           }}
-          →
+          @if (!loading()) { <app-icon name="arrow-right" /> }
         </button>
         @if (message()) {
           <p class="auth-message">{{ message() }}</p>

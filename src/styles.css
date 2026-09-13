@@ -1,25 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root{
-  --ev-blue:#0874f9;
-  --ev-blue-700:#0563db;
-  --ev-blue-50:#eef6ff;
-  --ev-navy:#101d3f;
-  --ev-text:#17213a;
-  --ev-muted:#66758f;
-  --ev-border:#e4eaf2;
+  --ev-blue:#3457f1;
+  --ev-blue-700:#2443ce;
+  --ev-blue-50:#eef1ff;
+  --ev-purple:#7a4df5;
+  --ev-orange:#ff6b35;
+  --ev-navy:#101828;
+  --ev-text:#1d2939;
+  --ev-muted:#667085;
+  --ev-border:#e4e7ec;
   --ev-surface:#ffffff;
-  --ev-bg:#f6f9fd;
-  --ev-green:#18ad6d;
-  --ev-orange:#f2a33b;
-  --ev-red:#e75361;
-  --ev-shadow:0 8px 24px rgba(24,50,91,.08);
-  --ev-shadow-lg:0 18px 48px rgba(21,50,96,.13);
+  --ev-bg:#f8f9fc;
+  --ev-green:#12b76a;
+  --ev-red:#f04438;
+  --ev-radius-sm:12px;
+  --ev-radius:18px;
+  --ev-radius-lg:28px;
+  --ev-shadow:0 10px 30px rgba(16,24,40,.08);
+  --ev-shadow-lg:0 24px 70px rgba(16,24,40,.15);
+  --mat-sys-primary:var(--ev-blue);
+  --mat-sys-on-primary:#fff;
+  --mat-sys-primary-container:var(--ev-blue-50);
+  --mat-sys-on-primary-container:var(--ev-blue-700);
 }
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--ev-bg);color:var(--ev-text);font-family:'DM Sans',Inter,Segoe UI,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.brand,.portal-brand,.manage-brand,.auth-brand{font-family:'Manrope','DM Sans',sans-serif}
 button,input,select,textarea{font:inherit}
 button,a{ -webkit-tap-highlight-color:transparent }
 a{color:inherit}
@@ -37,3 +47,15 @@ body{font-size:15px;line-height:1.55;letter-spacing:-.005em}
 input,select,textarea,button{font-size:14px}
 input::placeholder,textarea::placeholder{color:#93a0b2;opacity:1}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid rgba(8,116,249,.16);outline-offset:2px}
+
+/* Uiverse-inspired interaction primitives, implemented locally for Angular. */
+.ev-interactive{position:relative;isolation:isolate;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.ev-interactive::after{content:'';position:absolute;z-index:-1;inset:-120% -35%;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.38) 48%,transparent 61%);transform:translateX(-65%) rotate(7deg);transition:transform .65s ease}
+.ev-interactive:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(52,87,241,.2)}
+.ev-interactive:hover::after{transform:translateX(65%) rotate(7deg)}
+.ev-glow{box-shadow:0 0 0 1px rgba(122,77,245,.08),0 18px 55px rgba(52,87,241,.13)}
+
+.mat-mdc-snack-bar-container .mdc-snackbar__surface{border-radius:14px!important;background:#101828!important;box-shadow:var(--ev-shadow-lg)!important}
+.mat-mdc-snack-bar-container .mdc-snackbar__label{font-weight:650!important;letter-spacing:0!important}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

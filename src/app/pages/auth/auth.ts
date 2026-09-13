@@ -1,15 +1,19 @@
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRippleModule } from '@angular/material/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs';
 import { apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { AppRole } from '../../core/api.models';
+import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, UntitledIcon, MatRippleModule, MatTooltipModule, MatProgressSpinnerModule],
   templateUrl: './auth.html',
   styleUrl: './auth.css',
 })
@@ -32,6 +36,8 @@ export class Auth {
   protected name = '';
   protected email = '';
   protected phone = '';
+  protected organizationName = '';
+  protected address = '';
   protected password = '';
   protected confirm = '';
   protected code = '';
@@ -106,6 +112,7 @@ export class Auth {
         !this.name ||
         !this.email ||
         !this.phone ||
+        (this.loginTarget.startsWith('/organizer') && !this.organizationName.trim()) ||
         !this.password ||
         this.password !== this.confirm ||
         !this.acceptedTerms()
@@ -123,7 +130,8 @@ export class Auth {
           phoneNumber: this.phone.trim() || undefined,
           password: this.password,
           role,
-          organizationName: role === 'Organizer' ? this.name.trim() : undefined,
+          organizationName: role === 'Organizer' ? this.organizationName.trim() : undefined,
+          address: role === 'Organizer' ? this.address.trim() || undefined : undefined,
         })
         .pipe(finalize(() => this.loading.set(false)))
         .subscribe({
