@@ -172,6 +172,12 @@ export const routes: Routes = [
     title: 'My Bookings | Event Parking',
   },
   {
+    path: 'customer/tickets',
+    loadComponent: loadPortal,
+    canActivate: [customerGuard],
+    title: 'Tickets & QR | Event Parking',
+  },
+  {
     path: 'customer/bookings/:id',
     loadComponent: loadPortal,
     canActivate: [customerGuard],

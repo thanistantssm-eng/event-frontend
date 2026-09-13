@@ -13,7 +13,8 @@ describe('Portal navigation', () => {
       venues: () => of([]),
       customerProfile: () => throwError(() => new Error('Preview without API session')),
       customerDashboard: () => of(null),
-      notifications: () => of([]),
+      favorites: () => of([]),
+      myTransactionNotifications: () => of([]),
     };
     const auth = {
       session: signal({
@@ -46,10 +47,11 @@ describe('Portal navigation', () => {
     const desktopLinks = element.querySelectorAll('.side-nav nav a');
     const mobileLinks = element.querySelectorAll('.mobile-bottom-nav a');
 
-    expect(desktopLinks.length).toBe(9);
+    expect(desktopLinks.length).toBe(10);
     expect(mobileLinks.length).toBe(5);
     expect(element.querySelector('.side-nav a.active')?.textContent).toContain('Dashboard');
     expect(element.querySelector('.profile-trigger')).toBeTruthy();
     expect(element.querySelector('.mobile-menu')).toBeTruthy();
+    expect(element.querySelector('a[href="/customer/tickets"]')?.textContent).toContain('Tickets');
   });
 });

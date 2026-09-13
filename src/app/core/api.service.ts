@@ -12,6 +12,7 @@ import {
   CustomerReport,
   EventAvailability,
   EventCategory,
+  FavoriteEvent,
   EventQuery,
   EventRecord,
   EventWrite,
@@ -152,6 +153,9 @@ export class ApiService {
   regenerateEventQr(id: number) {
     return this.http.post<EventRecord>(`${API_ROOT}/events/${id}/qr/regenerate`, {});
   }
+  cancelEvent(id: number, reason?: string) {
+    return this.http.post<EventRecord>(`${API_ROOT}/events/${id}/cancel`, { reason });
+  }
 
   categories(includeInactive = false) {
     const params = new HttpParams().set('includeInactive', includeInactive);
@@ -165,6 +169,14 @@ export class ApiService {
     return this.http.put<EventCategory>(`${API_ROOT}/categories/${id}`, payload);
   }
   deleteCategory(id: number) { return this.http.delete<void>(`${API_ROOT}/categories/${id}`); }
+
+  favorites() { return this.http.get<FavoriteEvent[]>(`${API_ROOT}/favorites`); }
+  addFavorite(eventId: number) {
+    return this.http.post<FavoriteEvent>(`${API_ROOT}/events/${eventId}/favorite`, {});
+  }
+  removeFavorite(eventId: number) {
+    return this.http.delete<void>(`${API_ROOT}/events/${eventId}/favorite`);
+  }
 
   submitApproval(eventId: number, organizerNotes?: string) {
     return this.http.post<Approval>(`${API_ROOT}/approvals/events/${eventId}/submit`, { organizerNotes });
@@ -305,6 +317,9 @@ export class ApiService {
   }
   markTransactionNotificationRead(id: number) {
     return this.http.put<UserNotification>(`${API_ROOT}/notifications/${id}/read`, {});
+  }
+  markAllTransactionNotificationsRead() {
+    return this.http.put<void>(`${API_ROOT}/notifications/read-all`, {});
   }
   adminReport() { return this.http.get<AdminReport>(`${API_ROOT}/reports/admin-summary`); }
   myCustomerReport() {

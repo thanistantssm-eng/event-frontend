@@ -188,9 +188,9 @@
               ><button type="button" (click)="go('/' + role() + '/events/' + event.backendId)">
                 Open
               </button>
-              @if (role() === 'organizer' && event.status === 'Draft') {
-                <button type="button" (click)="submitEventForApproval(event.backendId)">
-                  Submit
+              @if (role() === 'organizer' && (event.status === 'Draft' || event.status === 'Rejected')) {
+                <button type="button" (click)="go('/organizer/events/' + event.backendId + '/edit')">
+                  Edit
                 </button>
               }
               @if (role() === 'admin' && event.status === 'Approved') {
@@ -206,20 +206,20 @@
         </section>
       }
 
-      @if (view().startsWith('create-') || view() === 'admin-event-form') {
+      @if (view().startsWith('create-') || view() === 'admin-event-form' || view() === 'event-edit') {
         <section class="manage-title">
           <div>
-            <span>CREATE EVENT</span>
-            <h1>New Event Draft</h1>
-            <p>All required fields map directly to the backend event contract.</p>
+            <span>{{ view() === 'event-edit' ? 'EDIT EVENT' : 'CREATE EVENT' }}</span>
+            <h1>{{ view() === 'event-edit' ? 'Update Event Draft' : 'New Event Draft' }}</h1>
+            <p>{{ view() === 'event-edit' ? 'Rejected events return to Draft after a successful edit.' : 'Complete the event basics, then configure tickets, seats and parking.' }}</p>
           </div>
         </section>
         <form class="data-card form-grid" (ngSubmit)="createEvent()">
-          @if (activeVenues().length === 0 || activeCategories().length === 0) {
+          @if ((eventForm.venueMode === 'OurProperty' && activeVenues().length === 0) || activeCategories().length === 0) {
             <div class="notice warning full">
               <b>Event setup is incomplete</b
               ><span>
-                @if (activeVenues().length === 0) {
+                @if (eventForm.venueMode === 'OurProperty' && activeVenues().length === 0) {
                   No active venues are available.
                 }
                 @if (activeCategories().length === 0) {
@@ -258,8 +258,17 @@
               <option value="SeatBased">Seat Based</option>
             </select></label
           >
-          <label
-            >Venue<select
+          <fieldset class="choice-field full">
+            <legend>Venue source</legend>
+            <div class="segmented-control">
+              <button type="button" [class.active]="eventForm.venueMode === 'OurProperty'" (click)="eventForm.venueMode = 'OurProperty'">Our property</button>
+              <button type="button" [class.active]="eventForm.venueMode === 'ExternalProperty'" (click)="eventForm.venueMode = 'ExternalProperty'">External property</button>
+            </div>
+            <small>External venues store their own location details and do not use internal parking areas.</small>
+          </fieldset>
+          @if (eventForm.venueMode === 'OurProperty') {
+            <label
+              >Venue<select
               name="venue"
               [(ngModel)]="eventForm.venueId"
               required
@@ -271,8 +280,11 @@
               @for (venue of activeVenues(); track venue.id) {
                 <option [ngValue]="venue.id">{{ venue.name }} — {{ venue.propertyName }}</option>
               }
-            </select></label
-          >
+            </select></label>
+          } @else {
+            <label>External Venue Name<input name="externalVenueName" [(ngModel)]="eventForm.externalVenueName" required /></label>
+            <label>External Venue Address<input name="externalVenueAddress" [(ngModel)]="eventForm.externalVenueAddress" required /></label>
+          }
           <label
             >Category<select
               name="category"
@@ -326,9 +338,9 @@
             ><button
               class="primary"
               type="submit"
-              [disabled]="activeVenues().length === 0 || activeCategories().length === 0"
+              [disabled]="(eventForm.venueMode === 'OurProperty' && activeVenues().length === 0) || activeCategories().length === 0"
             >
-              Create Draft
+              {{ view() === 'event-edit' ? 'Save Changes' : 'Create Draft' }}
             </button>
           </div>
         </form>
@@ -337,7 +349,6 @@
       @if (
         view() === 'event-detail' ||
         view() === 'admin-event-detail' ||
-        view() === 'event-edit' ||
         view() === 'seat-manage' ||
         view() === 'pricing-manage' ||
         view() === 'parking-manage' ||
@@ -376,13 +387,30 @@
               management screens after the draft is created.
             </p>
             @if (role() === 'organizer' && event.status === 'Draft') {
+              <div class="approval-readiness" [class.ready]="canSubmitForApproval(event)">
+                <b>{{ canSubmitForApproval(event) ? 'Ready for approval' : 'Complete setup before submitting' }}</b>
+                @for (issue of approvalIssues(event); track issue) {
+                  <small>• {{ issue }}</small>
+                } @empty {
+                  <small>Ticket and seat validation passed.</small>
+                }
+              </div>
               <button
                 class="primary"
                 type="button"
+                [disabled]="!canSubmitForApproval(event) || actionLoading()"
                 (click)="submitEventForApproval(event.backendId)"
               >
                 Submit for Approval
               </button>
+            }
+            @if (role() === 'organizer' && (event.status === 'Draft' || event.status === 'Rejected')) {
+              <button type="button" (click)="go('/organizer/events/' + event.backendId + '/edit')">
+                {{ event.status === 'Rejected' ? 'Edit rejected event' : 'Edit event' }}
+              </button>
+            }
+            @if (event.status !== 'Cancelled') {
+              <button class="danger-btn" type="button" [disabled]="actionLoading()" (click)="cancelEvent(event)">Cancel Event</button>
             }
             @if (role() === 'admin' && event.status === 'Approved') {
               <button class="primary" type="button" (click)="publish(event)">Publish Event</button>
@@ -429,6 +457,11 @@
               >
                 Parking
               </button>
+              <button type="button" (click)="go('/' + role() + '/events/' + event.backendId + '/poster-qr')">Poster & QR</button>
+              @if (role() === 'organizer') {
+                <button type="button" (click)="go('/organizer/events/' + event.backendId + '/bookings')">Bookings</button>
+                <button type="button" (click)="go('/organizer/events/' + event.backendId + '/reports')">Revenue</button>
+              }
             </div>
           </section>
         }
@@ -477,6 +510,12 @@
         <section class="data-card">
           <h2>Seat Setup</h2>
           <form class="form-grid" (ngSubmit)="addSeat()">
+            <label>Ticket Type<select name="seatTicketType" [(ngModel)]="seatForm.ticketTypeId">
+              <option [ngValue]="0">Use base event price</option>
+              @for (ticket of eventTickets(); track ticket.id) {
+                <option [ngValue]="ticket.id">{{ ticket.name }} — LKR {{ ticket.price | number }}</option>
+              }
+            </select></label>
             <label
               >Seat Number<input
                 name="seatNumber"
@@ -497,10 +536,30 @@
                 [(ngModel)]="seatForm.priceOverride" /></label
             ><button class="primary" type="submit">Add Seat</button>
           </form>
+          <section class="bulk-seat-panel">
+            <div class="section-heading">
+              <div><span>BULK TOOL</span><h3>Generate a seat block</h3></div>
+              <small>Creates up to 500 seats in one backend request.</small>
+            </div>
+            <form class="form-grid" (ngSubmit)="addBulkSeats()">
+              <label>Starting Row<input name="bulkStartRow" maxlength="1" [(ngModel)]="bulkSeatForm.startRow" /></label>
+              <label>Rows<input name="bulkRows" type="number" min="1" max="26" [(ngModel)]="bulkSeatForm.rowCount" /></label>
+              <label>Seats / Row<input name="bulkSeatsPerRow" type="number" min="1" max="100" [(ngModel)]="bulkSeatForm.seatsPerRow" /></label>
+              <label>Starting Number<input name="bulkStartNumber" type="number" min="1" [(ngModel)]="bulkSeatForm.startNumber" /></label>
+              <label>Ticket Type<select name="bulkTicketType" [(ngModel)]="bulkSeatForm.ticketTypeId">
+                <option [ngValue]="0">Use base event price</option>
+                @for (ticket of eventTickets(); track ticket.id) {
+                  <option [ngValue]="ticket.id">{{ ticket.name }}</option>
+                }
+              </select></label>
+              <label>Price Override<input name="bulkPrice" type="number" min="0" [(ngModel)]="bulkSeatForm.priceOverride" /></label>
+              <button class="primary" type="submit" [disabled]="actionLoading()">Generate {{ bulkSeatForm.rowCount * bulkSeatForm.seatsPerRow }} Seats</button>
+            </form>
+          </section>
           <div class="seat-grid">
             @for (seat of eventSeats(); track seat.id) {
               <span [class.selected]="seat.status === 'Available'"
-                >{{ seat.seatNumber }}<small>{{ seat.status }}</small></span
+                >{{ seat.seatNumber }}<small>{{ ticketName(seat.ticketTypeId) }}</small></span
               >
             } @empty {
               <div class="empty-state"><p>No seats configured.</p></div>
@@ -554,6 +613,51 @@
             <div class="empty-state"><p>No parking allocated to this event.</p></div>
           }
         </section>
+      }
+
+      @if (view() === 'poster-qr') {
+        @if (selectedEventRecord(); as eventRecord) {
+          <section class="media-management-grid">
+            <article class="data-card poster-preview-card">
+              <div class="section-heading"><div><span>EVENT POSTER</span><h2>Public artwork</h2></div></div>
+              @if (eventRecord.posterUrl) {
+                <img [src]="eventRecord.posterUrl" [alt]="eventRecord.name + ' poster'" />
+                <a [href]="eventRecord.posterUrl" target="_blank" rel="noopener">Open original poster</a>
+              } @else {
+                <div class="empty-state"><h3>No poster URL</h3><p>Edit the event to add public artwork.</p></div>
+              }
+            </article>
+            <article class="data-card qr-management-card">
+              <div class="section-heading"><div><span>EVENT QR</span><h2>Check-in identifier</h2></div><em class="status">Live</em></div>
+              @if (eventRecord.eventQrCode) {
+                <app-qr-visual [value]="eventRecord.eventQrCode" [label]="eventRecord.name + ' QR code'" />
+                <div class="qr-token" aria-label="Event QR token">{{ eventRecord.eventQrCode }}</div>
+                <p>Use this token with the backend QR lookup endpoint or your check-in scanner.</p>
+                <div class="action-row">
+                  <button type="button" (click)="copyEventQr()">Copy token</button>
+                  <button class="primary" type="button" [disabled]="actionLoading()" (click)="regenerateEventQr()">Regenerate QR</button>
+                </div>
+              } @else {
+                <button class="primary" type="button" (click)="regenerateEventQr()">Generate QR</button>
+              }
+            </article>
+          </section>
+        }
+      }
+
+      @if (view() === 'event-reports') {
+        @if (eventReport(); as report) {
+          <section class="metric-grid revenue-metrics">
+            <article><small>Total Revenue</small><b>LKR {{ report.totalRevenue | number }}</b></article>
+            <article><small>Ticket Revenue</small><b>LKR {{ report.ticketRevenue | number }}</b></article>
+            <article><small>Parking Revenue</small><b>LKR {{ report.parkingRevenue | number }}</b></article>
+            <article><small>Confirmed Bookings</small><b>{{ report.confirmedBookings }}</b></article>
+            <article><small>Tickets Sold</small><b>{{ report.ticketsSold }}</b></article>
+            <article><small>Parking Reservations</small><b>{{ report.parkingReservations }}</b></article>
+          </section>
+        } @else {
+          <section class="data-card"><div class="empty-state"><h3>No revenue yet</h3><p>Confirmed paid bookings will appear in this event report.</p></div></section>
+        }
       }
 
       @if (view() === 'venues') {
@@ -841,7 +945,7 @@
           </div>
         </section>
         <section class="data-card">
-          @for (booking of bookings(); track booking.id) {
+          @for (booking of visibleBookings(); track booking.id) {
             <div class="data-row">
               <span
                 ><b>{{ booking.eventName }}</b
@@ -947,6 +1051,18 @@
               <article>
                 <small>Events Reported</small><b>{{ sales.events.length }}</b>
               </article>
+            </section>
+            <section class="data-card report-table">
+              <div class="section-heading"><div><span>EVENT PERFORMANCE</span><h2>Revenue by event</h2></div></div>
+              @for (event of sales.events; track event.eventId) {
+                <button class="data-row" type="button" (click)="go('/organizer/events/' + event.eventId + '/reports')">
+                  <span><b>{{ event.eventName }}</b><small>{{ event.confirmedBookings }} confirmed bookings</small></span>
+                  <strong>{{ event.ticketsSold }} tickets</strong>
+                  <em>LKR {{ event.ticketRevenue | number }}</em>
+                </button>
+              } @empty {
+                <div class="empty-state"><p>No event revenue records yet.</p></div>
+              }
             </section>
           }
         }

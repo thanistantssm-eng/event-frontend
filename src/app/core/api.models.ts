@@ -100,13 +100,27 @@ export interface EventCategory {
   isActive: boolean;
 }
 
+export interface FavoriteEvent {
+  id: number;
+  eventId: number;
+  eventName: string;
+  posterUrl?: string | null;
+  categoryName?: string | null;
+  startDateTime: string;
+  ticketPrice: number;
+  createdAtUtc: string;
+}
+
 export interface EventRecord {
   id: number;
   name: string;
   description: string;
   eventType: 'SeatBased' | 'NonSeatBased' | string;
   organizerId: number;
-  venueId: number;
+  venueId?: number | null;
+  venueMode?: 'OurProperty' | 'ExternalProperty' | string;
+  externalVenueName?: string | null;
+  externalVenueAddress?: string | null;
   eventCategoryId: number;
   eventCategoryName?: string | null;
   startDateTime: string;
@@ -141,7 +155,13 @@ export type EventWrite = Pick<
   | 'startDateTime'
   | 'endDateTime'
   | 'ticketPrice'
-> & { organizerId?: number; posterUrl?: string | null };
+> & {
+  organizerId?: number;
+  posterUrl?: string | null;
+  venueMode?: 'OurProperty' | 'ExternalProperty' | string;
+  externalVenueName?: string | null;
+  externalVenueAddress?: string | null;
+};
 
 export interface TicketType {
   id: number;
@@ -221,8 +241,13 @@ export interface Booking {
   customerId: number;
   eventId: number;
   eventName: string;
+  eventStartDateTime?: string;
+  venueId?: number | null;
+  externalVenueName?: string | null;
   status: string;
   totalAmount: number;
+  ticketType?: string;
+  quantity?: number;
   seats: string[];
   parkingSlot?: string | null;
   paymentStatus: string;

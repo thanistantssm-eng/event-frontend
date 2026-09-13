@@ -14,6 +14,7 @@ import {
   CustomerDashboard,
   CustomerProfile,
   EventRecord,
+  FavoriteEvent,
   ParkingSlot,
   Payment,
   PaymentReceipt,
@@ -24,6 +25,8 @@ import {
   Venue,
 } from '../../core/api.models';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
+import { QrVisual } from '../../shared/qr-visual/qr-visual';
+import QRCode from 'qrcode';
 
 type EventItem = {
   id: string;
@@ -39,6 +42,7 @@ type EventItem = {
   status: string;
   description: string;
   posterUrl?: string | null;
+  startAt: string;
 };
 
 type BookingDraft = {
@@ -62,12 +66,13 @@ const emptyEvent: EventItem = {
   format: 'General Entry',
   status: 'Unavailable',
   description: '',
+  startAt: '',
 };
 
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary, UntitledIcon, MatRippleModule, MatTooltipModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary, UntitledIcon, QrVisual, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './portal.html',
   styleUrl: './portal.css',
   encapsulation: ViewEncapsulation.None,
@@ -92,6 +97,9 @@ export class Portal {
   );
   protected readonly query = signal('');
   protected readonly category = signal('All');
+  protected readonly eventDate = signal('');
+  protected readonly eventVenue = signal('All');
+  protected readonly maxPrice = signal<number | null>(null);
   protected readonly selectedTicket = signal('');
   protected readonly selectedSeat = signal('');
   protected readonly selectedParking = signal('');
@@ -102,6 +110,7 @@ export class Portal {
   protected readonly customerBookings = signal<Booking[]>([]);
   protected readonly customerPayments = signal<Payment[]>([]);
   protected readonly apiNotifications = signal<UserNotification[]>([]);
+  protected readonly favoriteEvents = signal<FavoriteEvent[]>([]);
   protected readonly profile = signal<CustomerProfile | null>(null);
   protected readonly dashboard = signal<CustomerDashboard | null>(null);
   protected readonly currentBooking = signal<Booking | null>(null);
@@ -124,10 +133,16 @@ export class Portal {
   protected readonly visibleEvents = computed(() => {
     const q = this.query().trim().toLowerCase();
     const category = this.category();
+    const venue = this.eventVenue();
+    const date = this.eventDate();
+    const maxPrice = this.maxPrice();
     return this.events.filter(
       (item) =>
         (!q || `${item.title} ${item.venue} ${item.category}`.toLowerCase().includes(q)) &&
-        (category === 'All' || item.category === category),
+        (category === 'All' || item.category === category) &&
+        (venue === 'All' || item.venue === venue) &&
+        (!date || item.startAt.slice(0, 10) === date) &&
+        (maxPrice === null || item.price <= maxPrice),
     );
   });
   protected readonly activeEvent = computed(
@@ -139,6 +154,36 @@ export class Portal {
   protected readonly eventCategories = computed(() => [
     ...new Set(this.events.map((event) => event.category)),
   ]);
+  protected readonly eventVenues = computed(() => [...new Set(this.events.map((event) => event.venue))]);
+  protected readonly upcomingBookings = computed(() =>
+    this.customerBookings().filter(
+      (booking) => booking.status !== 'Cancelled' && this.bookingStart(booking).getTime() >= Date.now(),
+    ),
+  );
+  protected readonly pastBookings = computed(() =>
+    this.customerBookings().filter(
+      (booking) => booking.status !== 'Cancelled' && this.bookingStart(booking).getTime() < Date.now(),
+    ),
+  );
+  protected readonly ticketBookings = computed(() =>
+    this.customerBookings().filter(
+      (booking) => booking.status === 'Confirmed' && booking.paymentStatus === 'Completed',
+    ),
+  );
+  protected readonly parkingBookingCount = computed(() =>
+    this.customerBookings().filter(
+      (booking) => booking.status !== 'Cancelled' && !!booking.parkingSlot,
+    ).length,
+  );
+  protected readonly recommendedEvents = computed(() => {
+    const bookedIds = new Set(this.customerBookings().map((booking) => booking.eventId));
+    return this.events.filter((event) => !bookedIds.has(event.backendId)).slice(0, 3);
+  });
+  protected readonly nextBooking = computed(() =>
+    [...this.upcomingBookings()].sort(
+      (a, b) => this.bookingStart(a).getTime() - this.bookingStart(b).getTime(),
+    )[0],
+  );
   protected readonly unreadNotificationCount = computed(
     () => this.apiNotifications().filter((notification) => !notification.isRead).length,
   );
@@ -156,6 +201,7 @@ export class Portal {
       bookings: 'My Bookings',
       'booking-detail': 'Booking Details',
       ticket: 'Digital Ticket',
+      'my-tickets': 'Tickets & QR',
       'my-parking': 'My Parking',
       payments: 'Payments',
       receipt: 'Payment Receipt',
@@ -196,6 +242,12 @@ export class Portal {
       groups.set(label, [...(groups.get(label) ?? []), seat]);
     }
     return [...groups.entries()].map(([label, seats]) => ({ label, seats }));
+  });
+  protected readonly selectableSeats = computed(() => {
+    const ticketId = this.selectedTicketId();
+    return this.availableSeats().filter(
+      (seat) => !seat.ticketTypeId || !ticketId || seat.ticketTypeId === ticketId,
+    );
   });
 
   constructor(
@@ -244,6 +296,7 @@ export class Portal {
       this.activeEventId.set(clean.split('/').at(-1) || '');
       this.view.set('event-detail');
     } else if (clean === 'customer/bookings') this.view.set('bookings');
+    else if (clean === 'customer/tickets') this.view.set('my-tickets');
     else if (clean.startsWith('customer/bookings/')) this.view.set('booking-detail');
     else if (clean === 'customer/parking') this.view.set('my-parking');
     else if (clean === 'customer/payments' || clean === 'customer/payment-history')
@@ -388,16 +441,68 @@ export class Portal {
       error: (error) => this.flash(apiErrorMessage(error)),
     });
   }
-  protected download(label = 'Ticket'): void {
+  protected async download(label = 'Ticket'): Promise<void> {
     const booking = this.currentBooking();
-    const body = `${label}\nEventora\n${booking?.eventName ?? this.activeEvent()?.title ?? 'Event'}\nBooking: ${booking?.bookingNumber ?? 'Pending'}\nSeat: ${booking?.seats.join(', ') || this.selectedSeat()}\nParking: ${booking?.parkingSlot || this.selectedParking() || 'Not selected'}\nTotal: LKR ${booking?.totalAmount ?? this.total()}`;
-    const url = URL.createObjectURL(new Blob([body], { type: 'text/plain;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${label.toLowerCase().replace(/\s+/g, '-')}.txt`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    this.flash(`${label} downloaded`);
+    const eventName = booking?.eventName ?? this.activeEvent()?.title ?? 'Event';
+    const bookingNumber = booking?.bookingNumber ?? 'Pending';
+    const seats = booking?.seats.join(', ') || this.selectedSeat() || 'General admission';
+    const parking = booking?.parkingSlot || this.selectedParking() || 'Not selected';
+    const total = booking?.totalAmount ?? this.total();
+
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const qrValue = this.currentQr()?.payload || this.currentQr()?.token || bookingNumber;
+      const qrImage = await QRCode.toDataURL(qrValue, {
+        width: 640,
+        margin: 2,
+        errorCorrectionLevel: 'H',
+        color: { dark: '#15221c', light: '#ffffff' },
+      });
+
+      doc.setFillColor(247, 249, 247);
+      doc.rect(0, 0, 210, 297, 'F');
+      doc.setFillColor(24, 94, 65);
+      doc.roundedRect(18, 18, 174, 42, 5, 5, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('EVENTORA  /  DIGITAL PASS', 28, 34);
+      doc.setFontSize(22);
+      doc.text(label.toUpperCase(), 28, 49);
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(220, 227, 222);
+      doc.roundedRect(18, 68, 174, 188, 5, 5, 'FD');
+      doc.setTextColor(21, 34, 28);
+      doc.setFontSize(20);
+      doc.text(doc.splitTextToSize(eventName, 104), 28, 88);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(98, 112, 104);
+      doc.text(`Booking ${bookingNumber}`, 28, 112);
+      doc.text('SEAT / ACCESS', 28, 132);
+      doc.text('PARKING', 28, 158);
+      doc.text('TOTAL', 28, 184);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(21, 34, 28);
+      doc.text(seats, 28, 141);
+      doc.text(parking, 28, 167);
+      doc.text(`LKR ${total.toLocaleString()}`, 28, 193);
+      doc.addImage(qrImage, 'PNG', 128, 105, 48, 48);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(98, 112, 104);
+      doc.text('Scan this QR at the entrance', 128, 161);
+      doc.text('Keep this pass ready for event and parking validation.', 28, 228);
+      doc.setFontSize(8);
+      doc.text('Generated securely by Eventora', 28, 246);
+      doc.save(`${label.toLowerCase().replace(/\s+/g, '-')}-${bookingNumber}.pdf`);
+      this.flash(`${label} PDF downloaded`);
+    } catch {
+      this.flash(`Unable to generate the ${label.toLowerCase()} PDF. Please try again.`);
+    }
   }
   protected shareTicket(): void {
     const text = `${this.currentBooking()?.eventName ?? this.activeEvent()?.title ?? 'Event'} ticket — seat ${this.currentBooking()?.seats.join(', ') || this.selectedSeat()}`;
@@ -420,7 +525,14 @@ export class Portal {
   }
   protected downloadBooking(booking: Booking): void {
     this.currentBooking.set(booking);
-    this.download('Ticket');
+    this.currentQr.set(null);
+    this.api.bookingQr(booking.id).subscribe({
+      next: (qr) => {
+        this.currentQr.set(qr);
+        void this.download('Ticket');
+      },
+      error: () => void this.download('Ticket'),
+    });
   }
   protected bookingForPayment(payment: Payment): Booking | undefined {
     return this.customerBookings().find((booking) => booking.id === payment.bookingId);
@@ -439,13 +551,47 @@ export class Portal {
     this.currentBooking.set(booking);
     this.go(`/customer/bookings/${booking.id}`);
   }
+  protected openTicket(booking: Booking): void {
+    this.currentBooking.set(booking);
+    this.go(`/customer/booking/ticket/${booking.id}`);
+  }
   protected beginBooking(event: EventItem): void {
     this.activeEventId.set(event.id);
     this.go(`/customer/booking/tickets/${event.id}`);
   }
+  protected isFavorite(eventId: number): boolean {
+    return this.favoriteEvents().some((favorite) => favorite.eventId === eventId);
+  }
+  protected eventForFavorite(favorite: FavoriteEvent): EventItem | undefined {
+    return this.events.find((event) => event.backendId === favorite.eventId);
+  }
+  protected toggleFavorite(eventId: number): void {
+    const removing = this.isFavorite(eventId);
+    if (removing) {
+      this.api.removeFavorite(eventId).subscribe({
+        next: () => {
+          this.favoriteEvents.update((items) => items.filter((item) => item.eventId !== eventId));
+          this.flash('Removed from saved events.');
+        },
+        error: (error: unknown) => this.flash(apiErrorMessage(error)),
+      });
+      return;
+    }
+
+    this.api.addFavorite(eventId).subscribe({
+      next: (favorite) => {
+        this.favoriteEvents.update((items) => [favorite, ...items]);
+        this.flash('Event saved.');
+      },
+      error: (error: unknown) => this.flash(apiErrorMessage(error)),
+    });
+  }
   protected markRead(notification: UserNotification): void {
     if (notification.isRead) return;
-    this.api.markNotificationRead(notification.id).subscribe({
+    const request = notification.customerId
+      ? this.api.markTransactionNotificationRead(notification.id)
+      : this.api.markNotificationRead(notification.id);
+    request.subscribe({
       next: (updated) => {
         this.apiNotifications.update((items) =>
           items.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
@@ -456,7 +602,7 @@ export class Portal {
   }
 
   protected markAllRead(): void {
-    this.api.markAllNotificationsRead().subscribe({
+    this.api.markAllTransactionNotificationsRead().subscribe({
       next: () => {
         this.apiNotifications.update((items) => items.map((item) => ({ ...item, isRead: true })));
         this.flash('All notifications marked as read.');
@@ -518,7 +664,14 @@ export class Portal {
       error: (error) => this.apiError.set(apiErrorMessage(error)),
     });
     this.api.customerDashboard().subscribe({ next: (data) => this.dashboard.set(data) });
-    this.api.notifications().subscribe({ next: (items) => this.apiNotifications.set(items) });
+    this.api.favorites().subscribe({
+      next: (items) => this.favoriteEvents.set(items),
+      error: (error) => this.apiError.set(apiErrorMessage(error)),
+    });
+    this.api.myTransactionNotifications().subscribe({
+      next: (items) => this.apiNotifications.set(items),
+      error: (error) => this.apiError.set(apiErrorMessage(error)),
+    });
   }
 
   private loadCustomerHistory(customerId: number): void {
@@ -657,7 +810,10 @@ export class Portal {
       id: String(event.id),
       backendId: event.id,
       title: event.name,
-      venue: venues.find((venue) => venue.id === event.venueId)?.name ?? `Venue #${event.venueId}`,
+      venue:
+        event.venueMode === 'ExternalProperty'
+          ? event.externalVenueName || 'External venue'
+          : venues.find((venue) => venue.id === event.venueId)?.name ?? `Venue #${event.venueId}`,
       date: start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       time: start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
       category: event.eventCategoryName || 'Event',
@@ -667,6 +823,23 @@ export class Portal {
       status: event.status,
       description: event.description,
       posterUrl: event.posterUrl,
+      startAt: event.startDateTime,
     };
+  }
+
+  protected bookingVenue(booking: Booking): string {
+    return (
+      booking.externalVenueName ||
+      this.events.find((event) => event.backendId === booking.eventId)?.venue ||
+      'Venue to be announced'
+    );
+  }
+
+  protected bookingStart(booking: Booking): Date {
+    const value =
+      booking.eventStartDateTime ||
+      this.events.find((event) => event.backendId === booking.eventId)?.startAt ||
+      booking.createdAtUtc;
+    return new Date(value);
   }
 }

@@ -5,7 +5,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { MatRippleModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { filter, finalize, forkJoin } from 'rxjs';
+import { catchError, filter, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import {
@@ -17,6 +17,7 @@ import {
   EventRecord,
   Organizer,
   OrganizerDashboard,
+  OrganizerEventRevenue,
   OrganizerTicketSales,
   ParkingArea,
   ParkingLayout,
@@ -29,6 +30,7 @@ import {
   Venue,
 } from '../../core/api.models';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
+import { QrVisual } from '../../shared/qr-visual/qr-visual';
 
 type Role = 'organizer' | 'admin';
 type RowStatus =
@@ -40,7 +42,8 @@ type RowStatus =
   | 'Confirmed'
   | 'Paid'
   | 'Active'
-  | 'Inactive';
+  | 'Inactive'
+  | 'Cancelled';
 
 type EventRow = {
   id: string;
@@ -60,7 +63,7 @@ type EventRow = {
 @Component({
   selector: 'app-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, UntitledIcon, MatRippleModule, MatTooltipModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, RouterLink, UntitledIcon, QrVisual, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './management.html',
   styleUrl: './management.css',
 })
@@ -112,6 +115,7 @@ export class Management {
   protected readonly eventTickets = signal<TicketType[]>([]);
   protected readonly eventSeats = signal<Seat[]>([]);
   protected readonly eventParking = signal<ParkingLayout | null>(null);
+  protected readonly eventReport = signal<OrganizerEventRevenue | null>(null);
   protected readonly selectedApprovalId = signal<number | null>(null);
   protected readonly selectedCategoryId = signal<number | null>(null);
   protected readonly eventForm = {
@@ -119,7 +123,10 @@ export class Management {
     name: '',
     description: '',
     eventType: 'NonSeatBased',
+    venueMode: 'OurProperty' as 'OurProperty' | 'ExternalProperty',
     venueId: 0,
+    externalVenueName: '',
+    externalVenueAddress: '',
     eventCategoryId: 0,
     startDateTime: '',
     endDateTime: '',
@@ -131,9 +138,18 @@ export class Management {
   protected readonly categoryForm = { name: '', description: '' };
   protected readonly ticketForm = { name: '', description: '', price: 0, quantity: 1 };
   protected readonly seatForm = {
+    ticketTypeId: 0,
     seatNumber: '',
     rowLabel: '',
     columnNumber: 1,
+    priceOverride: null as number | null,
+  };
+  protected readonly bulkSeatForm = {
+    startRow: 'A',
+    rowCount: 1,
+    seatsPerRow: 10,
+    startNumber: 1,
+    ticketTypeId: 0,
     priceOverride: null as number | null,
   };
   protected readonly parkingForm = { parkingAreaId: 0, allocatedSlotCount: 1, parkingFee: 0 };
@@ -153,6 +169,13 @@ export class Management {
         (!q || `${e.title} ${e.venue} ${e.type}`.toLowerCase().includes(q)) &&
         (s === 'All' || e.status === s),
     );
+  });
+
+  protected readonly visibleBookings = computed(() => {
+    const eventId = this.routeEventId();
+    return eventId
+      ? this.bookings().filter((booking) => booking.eventId === eventId)
+      : this.bookings();
   });
 
   protected readonly adminNav = [
@@ -421,6 +444,14 @@ export class Management {
 
   protected submitEventForApproval(eventId: number): void {
     if (this.actionLoading()) return;
+    const event = this.eventRows().find((item) => item.backendId === eventId);
+    if (event) {
+      const issues = this.approvalIssues(event);
+      if (issues.length) {
+        this.flash(issues[0]);
+        return;
+      }
+    }
     this.actionLoading.set(true);
     this.api
       .submitApproval(eventId)
@@ -428,7 +459,12 @@ export class Management {
       .subscribe({
         next: (approval) => {
           this.approvals.update((items) => [approval, ...items]);
+          this.visibleEventRecords = this.visibleEventRecords.map((item) =>
+            item.id === eventId ? { ...item, status: 'PendingApproval' } : item,
+          );
+          this.refreshEventRows();
           this.flash('Event submitted for approval');
+          this.loadData();
         },
         error: (error) => this.flash(apiErrorMessage(error)),
       });
@@ -460,10 +496,44 @@ export class Management {
   }
 
   protected selectedEvent(): EventRow | undefined {
+    return this.eventRows().find((event) => event.backendId === this.routeEventId());
+  }
+
+  protected selectedEventRecord(): EventRecord | undefined {
+    return this.visibleEventRecords.find((event) => event.id === this.routeEventId());
+  }
+
+  protected eventVenueLabel(event: EventRecord): string {
+    if (event.venueMode === 'ExternalProperty') {
+      return [event.externalVenueName, event.externalVenueAddress].filter(Boolean).join(' — ');
+    }
+    return this.loadedVenues.find((venue) => venue.id === event.venueId)?.name ?? 'Internal venue';
+  }
+
+  protected ticketName(ticketTypeId?: number | null): string {
+    return this.eventTickets().find((ticket) => ticket.id === ticketTypeId)?.name ?? 'Base price';
+  }
+
+  protected approvalIssues(event: EventRow): string[] {
+    const issues: string[] = [];
+    if (!this.eventTickets().some((ticket) => ticket.isActive && ticket.quantity > 0)) {
+      issues.push('Add at least one active ticket type with quantity.');
+    }
+    if (event.type === 'Seat Based' && !this.eventSeats().some((seat) => seat.isActive)) {
+      issues.push('Add at least one active seat for this seat-based event.');
+    }
+    return issues;
+  }
+
+  protected canSubmitForApproval(event: EventRow): boolean {
+    return event.status === 'Draft' && this.approvalIssues(event).length === 0;
+  }
+
+  private routeEventId(): number | null {
     const parts = this.router.url.split('?')[0].split('/').filter(Boolean);
     const eventIndex = parts.indexOf('events');
     const id = eventIndex >= 0 ? Number(parts[eventIndex + 1]) : NaN;
-    return this.eventRows().find((event) => event.backendId === id);
+    return Number.isFinite(id) ? id : null;
   }
 
   protected selectedProperty(): Property | undefined {
@@ -474,10 +544,14 @@ export class Management {
 
   protected createEvent(): void {
     if (this.actionLoading()) return;
+    const isEditing = this.view() === 'event-edit';
+    const editingId = this.routeEventId();
     if (
-      (this.role() === 'admin' && !this.eventForm.organizerId) ||
+      (!isEditing && this.role() === 'admin' && !this.eventForm.organizerId) ||
       !this.eventForm.name ||
-      !this.eventForm.venueId ||
+      (this.eventForm.venueMode === 'OurProperty' && !this.eventForm.venueId) ||
+      (this.eventForm.venueMode === 'ExternalProperty' &&
+        (!this.eventForm.externalVenueName.trim() || !this.eventForm.externalVenueAddress.trim())) ||
       !this.eventForm.eventCategoryId ||
       !this.eventForm.startDateTime ||
       !this.eventForm.endDateTime
@@ -499,22 +573,43 @@ export class Management {
       name: this.eventForm.name.trim(),
       description: this.eventForm.description.trim(),
       eventType: this.eventForm.eventType,
-      venueId: Number(this.eventForm.venueId),
+      venueMode: this.eventForm.venueMode,
+      venueId:
+        this.eventForm.venueMode === 'OurProperty' ? Number(this.eventForm.venueId) : null,
+      externalVenueName:
+        this.eventForm.venueMode === 'ExternalProperty'
+          ? this.eventForm.externalVenueName.trim()
+          : null,
+      externalVenueAddress:
+        this.eventForm.venueMode === 'ExternalProperty'
+          ? this.eventForm.externalVenueAddress.trim()
+          : null,
       eventCategoryId: Number(this.eventForm.eventCategoryId),
       startDateTime: startsAt.toISOString(),
       endDateTime: endsAt.toISOString(),
       ticketPrice: Number(this.eventForm.ticketPrice),
       posterUrl: this.eventForm.posterUrl.trim() || null,
     };
-    const request =
-      this.role() === 'admin'
+    const request = isEditing && editingId
+      ? this.api.updateEvent(editingId, payload)
+      : this.role() === 'admin'
         ? this.api.createEventForOrganizer(Number(this.eventForm.organizerId), payload)
         : this.api.createEvent(payload);
     this.actionLoading.set(true);
     request.pipe(finalize(() => this.actionLoading.set(false))).subscribe({
-      next: () => {
-        this.flash('Event created as a draft.');
-        this.go(this.role() === 'admin' ? '/admin/events' : '/organizer/my-events');
+      next: (saved) => {
+        this.visibleEventRecords = isEditing
+          ? this.visibleEventRecords.map((event) => (event.id === saved.id ? saved : event))
+          : [saved, ...this.visibleEventRecords];
+        this.refreshEventRows();
+        this.flash(isEditing ? 'Event updated and returned to Draft.' : 'Event created as a draft.');
+        this.go(
+          isEditing
+            ? `/${this.role()}/events/${saved.id}`
+            : this.role() === 'admin'
+              ? '/admin/events'
+              : '/organizer/my-events',
+        );
         this.loadData();
       },
       error: (error) => this.flash(apiErrorMessage(error)),
@@ -679,6 +774,7 @@ export class Management {
     this.actionLoading.set(true);
     this.api
       .createSeat(event.backendId, {
+        ticketTypeId: this.seatForm.ticketTypeId || null,
         seatNumber: this.seatForm.seatNumber.trim(),
         rowLabel: this.seatForm.rowLabel.trim() || null,
         columnNumber: Number(this.seatForm.columnNumber),
@@ -690,6 +786,87 @@ export class Management {
           this.eventSeats.update((items) => [...items, seat]);
           this.seatForm.seatNumber = '';
           this.flash('Seat added.');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected addBulkSeats(): void {
+    if (this.actionLoading()) return;
+    const event = this.selectedEvent();
+    const rowCount = Number(this.bulkSeatForm.rowCount);
+    const seatsPerRow = Number(this.bulkSeatForm.seatsPerRow);
+    const startNumber = Number(this.bulkSeatForm.startNumber);
+    const startRow = this.bulkSeatForm.startRow.trim().toUpperCase().charAt(0);
+    const total = rowCount * seatsPerRow;
+
+    if (!event || !startRow || rowCount < 1 || seatsPerRow < 1 || startNumber < 1 || total > 500) {
+      this.flash('Enter a valid layout of up to 500 seats per bulk action.');
+      return;
+    }
+
+    const firstRowCode = startRow.charCodeAt(0);
+    const seats = Array.from({ length: rowCount }, (_, rowIndex) => {
+      const rowLabel = String.fromCharCode(firstRowCode + rowIndex);
+      return Array.from({ length: seatsPerRow }, (_, seatIndex) => ({
+        ticketTypeId: this.bulkSeatForm.ticketTypeId || null,
+        seatNumber: `${rowLabel}${startNumber + seatIndex}`,
+        rowLabel,
+        columnNumber: startNumber + seatIndex,
+        priceOverride: this.bulkSeatForm.priceOverride,
+      }));
+    }).flat();
+
+    this.actionLoading.set(true);
+    this.api
+      .createSeats(event.backendId, seats)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (created) => {
+          this.eventSeats.update((items) => [...items, ...created]);
+          this.flash(`${created.length} seats created and mapped successfully.`);
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected regenerateEventQr(): void {
+    const eventId = this.routeEventId();
+    if (!eventId || this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api
+      .regenerateEventQr(eventId)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.replaceEvent(updated);
+          this.flash('Event QR regenerated.');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected copyEventQr(): void {
+    const qr = this.selectedEventRecord()?.eventQrCode;
+    if (!qr) return;
+    void navigator.clipboard.writeText(qr).then(
+      () => this.flash('Event QR token copied.'),
+      () => this.flash('Copy failed. Select the token manually.'),
+    );
+  }
+
+  protected cancelEvent(event: EventRow): void {
+    if (this.actionLoading()) return;
+    const reason = window.prompt('Reason for cancelling this event?')?.trim();
+    if (!reason) return;
+    this.actionLoading.set(true);
+    this.api
+      .cancelEvent(event.backendId, reason)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.replaceEvent(updated);
+          this.flash('Event cancelled and affected bookings updated.');
         },
         error: (error) => this.flash(apiErrorMessage(error)),
       });
@@ -740,7 +917,9 @@ export class Management {
         this.loadedVenues = venues;
         this.refreshEventRows();
         if (this.role() === 'organizer') {
-          const requests = visibleEvents.map((event) => this.api.eventBookings(event.id));
+          const requests = visibleEvents.map((event) =>
+            this.api.eventBookings(event.id).pipe(catchError(() => of([] as Booking[]))),
+          );
           if (requests.length)
             forkJoin(requests).subscribe({
               next: (groups) => {
@@ -813,15 +992,29 @@ export class Management {
     const eventIndex = parts.indexOf('events');
     const eventId = eventIndex >= 0 ? Number(parts[eventIndex + 1]) : NaN;
     if (!Number.isFinite(eventId)) return;
-    forkJoin({
-      tickets: this.api.tickets(eventId),
-      seats: this.api.seats(eventId),
-      parking: this.api.eventParkingLayout(eventId),
-    }).subscribe({
-      next: ({ tickets, seats, parking }) => {
+    this.api.event(eventId).pipe(
+      switchMap((event) =>
+        forkJoin({
+          event: of(event),
+          tickets: this.api.tickets(eventId),
+          seats: this.api.seats(eventId),
+          parking: this.api.eventParkingLayout(eventId),
+          parkingAreas: event.venueId ? this.api.parkingAreas(event.venueId) : of([] as ParkingArea[]),
+          report:
+            this.role() === 'organizer'
+              ? this.api.organizerEventRevenue(eventId).pipe(catchError(() => of(null)))
+              : of(null),
+        }),
+      ),
+    ).subscribe({
+      next: ({ event, tickets, seats, parking, parkingAreas, report }) => {
+        this.replaceEvent(event);
         this.eventTickets.set(tickets);
         this.eventSeats.set(seats);
         this.eventParking.set(parking);
+        this.parkingAreas.set(parkingAreas);
+        this.eventReport.set(report);
+        if (this.view() === 'event-edit') this.populateEventForm(event);
       },
       error: (error) => this.apiError.set(apiErrorMessage(error)),
     });
@@ -848,7 +1041,9 @@ export class Management {
             ? 'Pending'
             : event.status === 'Rejected'
               ? 'Rejected'
-              : 'Draft';
+              : event.status === 'Cancelled'
+                ? 'Cancelled'
+                : 'Draft';
     const images = [
       '/assets/concert-hero.webp',
       '/assets/event-grid.webp',
@@ -860,7 +1055,10 @@ export class Management {
       organizerId: event.organizerId,
       categoryId: event.eventCategoryId,
       title: event.name,
-      venue: venues.find((venue) => venue.id === event.venueId)?.name ?? `Venue #${event.venueId}`,
+      venue:
+        event.venueMode === 'ExternalProperty'
+          ? event.externalVenueName || 'External venue'
+          : venues.find((venue) => venue.id === event.venueId)?.name ?? `Venue #${event.venueId}`,
       date: start.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
       type: event.eventType === 'SeatBased' ? 'Seat Based' : 'Non-Seat Based',
       status,
@@ -876,5 +1074,35 @@ export class Management {
         this.toEventRow(event, this.loadedVenues, index),
       ),
     );
+  }
+
+  private replaceEvent(updated: EventRecord): void {
+    const exists = this.visibleEventRecords.some((event) => event.id === updated.id);
+    this.visibleEventRecords = exists
+      ? this.visibleEventRecords.map((event) => (event.id === updated.id ? updated : event))
+      : [updated, ...this.visibleEventRecords];
+    this.refreshEventRows();
+  }
+
+  private populateEventForm(event: EventRecord): void {
+    this.eventForm.name = event.name;
+    this.eventForm.description = event.description;
+    this.eventForm.eventType = event.eventType;
+    this.eventForm.venueMode =
+      event.venueMode === 'ExternalProperty' ? 'ExternalProperty' : 'OurProperty';
+    this.eventForm.venueId = event.venueId ?? 0;
+    this.eventForm.externalVenueName = event.externalVenueName ?? '';
+    this.eventForm.externalVenueAddress = event.externalVenueAddress ?? '';
+    this.eventForm.eventCategoryId = event.eventCategoryId;
+    this.eventForm.startDateTime = this.toLocalDateTime(event.startDateTime);
+    this.eventForm.endDateTime = this.toLocalDateTime(event.endDateTime);
+    this.eventForm.ticketPrice = event.ticketPrice;
+    this.eventForm.posterUrl = event.posterUrl ?? '';
+  }
+
+  private toLocalDateTime(value: string): string {
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset() * 60_000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
   }
 }
