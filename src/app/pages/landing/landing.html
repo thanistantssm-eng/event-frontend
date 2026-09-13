@@ -15,8 +15,13 @@
     </div>
     <div class="nav-actions">
       <button matRipple matTooltip="Search events" class="icon-button" type="button" aria-label="Search" (click)="focusSearch()"><app-icon name="search-lg" /></button>
-      <a matRipple class="btn btn-white" routerLink="/login">Log In</a>
-      <a matRipple class="btn btn-primary ev-interactive" routerLink="/register">Create Account</a>
+      @if (auth.isAuthenticated()) {
+        <a matRipple class="btn btn-white dashboard-link" [routerLink]="auth.landingRoute()">My Dashboard</a>
+        <a matRipple class="user-chip" [routerLink]="auth.landingRoute()" aria-label="Open my account"><span>{{ (auth.session()?.username || 'U').charAt(0) }}</span><b>{{ auth.session()?.username }}</b></a>
+      } @else {
+        <a matRipple class="btn btn-white" routerLink="/login">Log In</a>
+        <a matRipple class="btn btn-primary ev-interactive" routerLink="/register">Create Account</a>
+      }
     </div>
   </nav>
 

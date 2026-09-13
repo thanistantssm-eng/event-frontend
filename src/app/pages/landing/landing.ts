@@ -5,6 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { catchError, forkJoin, of } from 'rxjs';
 import { EventRecord, Venue } from '../../core/api.models';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { UiState } from '../../shared/ui-state/ui-state';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
@@ -57,7 +58,7 @@ export class Landing {
     });
   });
 
-  constructor(private readonly api: ApiService) {
+  constructor(private readonly api: ApiService, protected readonly auth: AuthService) {
     this.loadEvents();
   }
 

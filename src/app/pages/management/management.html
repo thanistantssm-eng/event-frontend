@@ -32,6 +32,10 @@
     </button>
   </aside>
 
+  @if (sidebarOpen()) {
+    <button class="manage-scrim" type="button" aria-label="Close navigation" (click)="sidebarOpen.set(false)"></button>
+  }
+
   <section class="manage-main">
     <header class="manage-top">
       <button matRipple matTooltip="Open navigation" type="button" (click)="sidebarOpen.set(!sidebarOpen())"><app-icon name="menu-01" /></button>

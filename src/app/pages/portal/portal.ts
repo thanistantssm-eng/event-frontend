@@ -139,6 +139,34 @@ export class Portal {
   protected readonly eventCategories = computed(() => [
     ...new Set(this.events.map((event) => event.category)),
   ]);
+  protected readonly unreadNotificationCount = computed(
+    () => this.apiNotifications().filter((notification) => !notification.isRead).length,
+  );
+  protected readonly pageLabel = computed(() => {
+    const labels: Record<string, string> = {
+      dashboard: 'Dashboard',
+      events: 'Discover Events',
+      'event-detail': 'Event Details',
+      tickets: 'Select Tickets',
+      seats: 'Select Seats',
+      'parking-select': 'Select Parking',
+      checkout: 'Booking Summary',
+      payment: 'Secure Payment',
+      confirmed: 'Booking Confirmed',
+      bookings: 'My Bookings',
+      'booking-detail': 'Booking Details',
+      ticket: 'Digital Ticket',
+      'my-parking': 'My Parking',
+      payments: 'Payments',
+      receipt: 'Payment Receipt',
+      notifications: 'Notifications',
+      profile: 'My Profile',
+      settings: 'Settings',
+      support: 'Help & Support',
+      favorites: 'Saved Events',
+    };
+    return labels[this.view()] ?? 'Customer Portal';
+  });
   protected readonly selectedTicketType = computed(() =>
     this.ticketTypes().find((ticket) => ticket.id === this.selectedTicketId()),
   );

@@ -1,12 +1,36 @@
 <div class="portal-shell">
-  <aside class="side-nav" [class.open]="sidebarOpen()">
+  <aside class="side-nav" [class.open]="sidebarOpen()" aria-label="Customer navigation">
     <a class="portal-brand" routerLink="/customer/dashboard"><span>✦</span><div><b>Eventora</b><small>Customer Portal</small></div></a>
-    <nav><a matRipple routerLink="/customer/dashboard" [class.active]="view() === 'dashboard'"><app-icon name="home-line" /> Dashboard</a><a matRipple routerLink="/customer/events" [class.active]="view() === 'events' || view() === 'event-detail'"><app-icon name="search-lg" /> Discover Events</a><a matRipple routerLink="/customer/bookings" [class.active]="view() === 'bookings' || view() === 'booking-detail'"><app-icon name="ticket-01" /> My Bookings</a><a matRipple routerLink="/customer/parking" [class.active]="view() === 'my-parking'"><app-icon name="car-01" /> My Parking</a><a matRipple routerLink="/customer/payments" [class.active]="view() === 'payments' || view() === 'receipt'"><app-icon name="credit-card-01" /> Payments</a><a matRipple routerLink="/customer/notifications" [class.active]="view() === 'notifications'"><app-icon name="bell-01" /> Notifications</a><a matRipple routerLink="/customer/profile" [class.active]="view() === 'profile'"><app-icon name="user-01" /> Profile</a><a matRipple routerLink="/customer/support" [class.active]="view() === 'support'"><app-icon name="help-circle" /> Support</a></nav>
-    <button matRipple type="button" class="logout" (click)="signOut()"><app-icon name="log-out-01" /> Sign Out</button>
+    <span class="nav-group-label">Workspace</span>
+    <nav>
+      <a matRipple routerLink="/customer/dashboard" [class.active]="view() === 'dashboard'"><app-icon name="home-line" /><span>Dashboard</span></a>
+      <a matRipple routerLink="/customer/events" [class.active]="view() === 'events' || view() === 'event-detail'"><app-icon name="search-lg" /><span>Discover Events</span></a>
+      <a matRipple routerLink="/customer/bookings" [class.active]="view() === 'bookings' || view() === 'booking-detail' || view() === 'ticket'"><app-icon name="ticket-01" /><span>My Bookings</span></a>
+      <a matRipple routerLink="/customer/parking" [class.active]="view() === 'my-parking'"><app-icon name="car-01" /><span>My Parking</span></a>
+      <a matRipple routerLink="/customer/payments" [class.active]="view() === 'payments' || view() === 'receipt'"><app-icon name="credit-card-01" /><span>Payments</span></a>
+      <a matRipple routerLink="/customer/notifications" [class.active]="view() === 'notifications'"><app-icon name="bell-01" /><span>Notifications</span>@if (unreadNotificationCount()) { <b class="nav-badge">{{ unreadNotificationCount() }}</b> }</a>
+      <a matRipple routerLink="/customer/profile" [class.active]="view() === 'profile'"><app-icon name="user-01" /><span>Profile</span></a>
+      <a matRipple routerLink="/customer/settings" [class.active]="view() === 'settings'"><app-icon name="settings-01" /><span>Settings</span></a>
+      <a matRipple routerLink="/customer/support" [class.active]="view() === 'support'"><app-icon name="help-circle" /><span>Help & Support</span></a>
+    </nav>
+    <div class="side-footer"><button matRipple type="button" class="logout" (click)="signOut()"><app-icon name="log-out-01" /><span>Sign Out</span></button></div>
   </aside>
 
+  @if (sidebarOpen()) { <button class="nav-scrim" type="button" aria-label="Close navigation" (click)="sidebarOpen.set(false)"></button> }
+
   <section class="portal-main">
-    <header class="portal-top"><button matRipple matTooltip="Open navigation" class="mobile-menu" type="button" (click)="sidebarOpen.set(!sidebarOpen())"><app-icon name="menu-01" /></button><div><b>{{ profile()?.name || auth.session()?.username || 'Customer' }}</b><small>{{ profile()?.email || auth.session()?.email }}</small></div><button matRipple matTooltip="Account menu" class="avatar" type="button" (click)="profileOpen.set(!profileOpen())">{{ (profile()?.name || auth.session()?.username || 'C').charAt(0) }}</button>@if (profileOpen()) { <div class="profile-menu"><a routerLink="/customer/profile">Profile</a><button type="button" (click)="signOut()">Sign Out</button></div> }</header>
+    <header class="portal-top">
+      <button matRipple matTooltip="Open navigation" class="mobile-menu" type="button" (click)="sidebarOpen.set(!sidebarOpen())"><app-icon name="menu-01" /></button>
+      <div class="top-heading"><small>Customer workspace</small><b>{{ pageLabel() }}</b></div>
+      <span class="top-spacer"></span>
+      <a matRipple matTooltip="Notifications" class="top-icon" routerLink="/customer/notifications" aria-label="Notifications"><app-icon name="bell-01" />@if (unreadNotificationCount()) { <b>{{ unreadNotificationCount() }}</b> }</a>
+      <button matRipple class="profile-trigger" type="button" aria-label="Open account menu" [attr.aria-expanded]="profileOpen()" (click)="profileOpen.set(!profileOpen())">
+        <span class="avatar">{{ (profile()?.name || auth.session()?.username || 'C').charAt(0) }}</span>
+        <span class="profile-copy"><b>{{ profile()?.name || auth.session()?.username || 'Customer' }}</b><small>{{ profile()?.email || auth.session()?.email }}</small></span>
+        <span class="profile-chevron">⌄</span>
+      </button>
+      @if (profileOpen()) { <div class="profile-menu"><a routerLink="/customer/profile"><app-icon name="user-01" /> Profile</a><a routerLink="/customer/settings"><app-icon name="settings-01" /> Settings</a><button type="button" (click)="signOut()"><app-icon name="log-out-01" /> Sign Out</button></div> }
+    </header>
 
     <main class="portal-content">
       @if (apiError()) { <div class="notice error"><b>Unable to load some data</b><span>{{ apiError() }}</span></div> }
@@ -62,6 +86,14 @@
       @if (view() === 'settings' || view() === 'favorites') { <section class="content-card"><span>NOT AVAILABLE</span><h1>{{ view() === 'favorites' ? 'Saved Events' : 'Account Settings' }}</h1><p>This feature is not exposed by the current backend, so no local or demo data is stored for it.</p></section> }
     </main>
   </section>
+
+  <nav class="mobile-bottom-nav" aria-label="Mobile customer navigation">
+    <a matRipple routerLink="/customer/dashboard" [class.active]="view() === 'dashboard'"><app-icon name="home-line" /><span>Home</span></a>
+    <a matRipple routerLink="/customer/events" [class.active]="view() === 'events' || view() === 'event-detail'"><app-icon name="search-lg" /><span>Events</span></a>
+    <a matRipple routerLink="/customer/bookings" [class.active]="view() === 'bookings' || view() === 'booking-detail' || view() === 'ticket'"><app-icon name="ticket-01" /><span>Bookings</span></a>
+    <a matRipple routerLink="/customer/parking" [class.active]="view() === 'my-parking'"><app-icon name="car-01" /><span>Parking</span></a>
+    <a matRipple routerLink="/customer/profile" [class.active]="view() === 'profile' || view() === 'settings' || view() === 'support'"><app-icon name="user-01" /><span>Account</span></a>
+  </nav>
 
   @if (bookingModal()) { <div class="modal-backdrop"><section class="modal-card"><h2>Cancel booking?</h2><p>The backend will release reserved seats and parking when cancellation succeeds.</p><div><button type="button" (click)="bookingModal.set(false)">Keep booking</button><button class="danger-btn" type="button" (click)="confirmCancel()">Cancel booking</button></div></section></div> }
 </div>

@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin } from 'rxjs';
 import { EventRecord, ParkingSlot, TicketType, Venue } from '../../core/api.models';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
+import { AuthService } from '../../core/auth.service';
 import { UiState } from '../../shared/ui-state/ui-state';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 
@@ -69,7 +70,7 @@ export class PublicPages {
   ];
   protected readonly openFaq = signal(0);
 
-  constructor(protected readonly router: Router, private readonly api: ApiService) {
+  constructor(protected readonly router: Router, private readonly api: ApiService, protected readonly auth: AuthService) {
     const clean = router.url.split('?')[0];
     if (clean === '/events') this.view = 'events';
     else if (clean.startsWith('/events/')) this.view = 'event-detail';
