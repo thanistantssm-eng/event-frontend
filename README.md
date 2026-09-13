@@ -41,7 +41,8 @@ The API base URL is configured at runtime in `public/api-config.js`, so deployme
 - Published public event discovery and event details
 - Customer profile, dashboard, bookings, optional parking, payment OTP, receipts, QR and notifications
 - Organizer-owned event list, draft creation, approval submission, bookings, sales reports and notifications
-- Admin dashboards, events, publication, organizer verification, approvals, users, properties, categories, bookings, payments, parking and reports
+- Admin dashboards, organizer-owned/admin-owned events, publication, organizer verification, approvals, users, properties, categories, bookings, payments, parking bulk generation and organizer-wise reports
+- Interactive customer parking map driven by backend allocations and slot state, including exact-slot selection, accessible/EV states, no-parking checkout and stale-selection conflict recovery
 - Organizer registration captures the distinct organization name and address expected by the backend contract
 
 Features not exposed by the backend, such as saved favorites, local preference settings, social sign-in, password reset and public contact submission, are not simulated with browser storage or fake success messages.

@@ -1,5 +1,15 @@
 # Frontend continuation completion notes
 
+## Full-stack parking and lifecycle completion (Sep 13, 2026)
+
+- Replaced the customer parking list with a responsive, data-driven top-down map with entrances, lanes, zones, slot states, accessible/EV treatments, exact selection details, and a permanent no-parking option.
+- Added 409 conflict recovery that clears a stale slot selection, reloads availability, and returns the customer to the map.
+- Added admin parking-area creation, activation controls, row/zone bulk slot generation, and a live layout preview.
+- Added admin-owned event creation, admin event edit/delete routes, safe organizer/admin event deletion, and reason-required cancellation dialogs.
+- Added organizer-wise admin event reports with PDF export and send-to-organizer actions, plus richer organizer event reports.
+- Extended My Parking with real area, type, fee, venue, event date, and booking status data.
+- Added tests for dynamic parking-map rendering; the backend repository contains a SQL Server LocalDB integration test for slot conflicts, no-parking bookings, cancellation release, and expiry release.
+
 ## Added in this continuation
 
 - Full organizer management surface and eight-step event creation wizard

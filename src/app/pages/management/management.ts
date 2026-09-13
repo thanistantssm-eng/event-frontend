@@ -15,12 +15,13 @@ import {
   Booking,
   EventCategory,
   EventRecord,
+  EventReport,
   Organizer,
   OrganizerDashboard,
-  OrganizerEventRevenue,
   OrganizerTicketSales,
   ParkingArea,
   ParkingLayout,
+  ParkingSlot,
   Payment,
   Property,
   Seat,
@@ -48,7 +49,7 @@ type RowStatus =
 type EventRow = {
   id: string;
   backendId: number;
-  organizerId: number;
+  organizerId: number | null;
   categoryId: number;
   title: string;
   venue: string;
@@ -79,8 +80,10 @@ export class Management {
   protected readonly seatCells = Array.from({ length: 64 });
   protected readonly miniSeatCells = Array.from({ length: 36 });
   protected readonly parkingCells = Array.from({ length: 48 });
-  protected readonly modalMode = signal<'approve' | 'reject' | 'delete'>('approve');
+  protected readonly modalMode = signal<'approve' | 'reject' | 'delete' | 'cancel-event' | 'delete-event'>('approve');
   protected readonly selectedName = signal('');
+  protected readonly selectedEventActionId = signal<number | null>(null);
+  protected readonly actionReason = signal('');
   protected readonly selectedSeatIndex = signal<number | null>(null);
   protected readonly selectedParkingIndex = signal<number | null>(null);
   protected readonly selectedWizardType = signal<'seat' | 'general'>('seat');
@@ -115,7 +118,12 @@ export class Management {
   protected readonly eventTickets = signal<TicketType[]>([]);
   protected readonly eventSeats = signal<Seat[]>([]);
   protected readonly eventParking = signal<ParkingLayout | null>(null);
-  protected readonly eventReport = signal<OrganizerEventRevenue | null>(null);
+  protected readonly eventReport = signal<EventReport | null>(null);
+  protected readonly generatedAdminEventReport = signal<EventReport | null>(null);
+  protected readonly adminReportOrganizerId = signal<number>(0);
+  protected readonly adminReportEventId = signal<number>(0);
+  protected readonly parkingAreaSlots = signal<ParkingSlot[]>([]);
+  protected readonly selectedParkingAreaId = signal<number>(0);
   protected readonly selectedApprovalId = signal<number | null>(null);
   protected readonly selectedCategoryId = signal<number | null>(null);
   protected readonly eventForm = {
@@ -153,6 +161,18 @@ export class Management {
     priceOverride: null as number | null,
   };
   protected readonly parkingForm = { parkingAreaId: 0, allocatedSlotCount: 1, parkingFee: 0 };
+  protected readonly parkingAreaForm = { venueId: 0, name: '', description: '', capacity: 20 };
+  protected readonly bulkParkingForm = {
+    startingZone: 'A',
+    zoneCount: 1,
+    slotsPerZone: 10,
+    startingNumber: 1,
+    slotType: 'Standard',
+  };
+
+  protected readonly adminReportEvents = computed(() =>
+    this.eventRows().filter((event) => event.organizerId === this.adminReportOrganizerId()),
+  );
 
   private readonly eventRows = signal<EventRow[]>([]);
   private visibleEventRecords: EventRecord[] = [];
@@ -180,17 +200,17 @@ export class Management {
 
   protected readonly adminNav = [
     ['Dashboard', '/admin/dashboard', 'home-line'],
-    ['Properties', '/admin/properties', 'building-02'],
     ['Venues', '/admin/venues', 'marker-pin-01'],
+    ['Properties', '/admin/properties', 'building-02'],
     ['Organizers', '/admin/organizers', 'users-01'],
-    ['Users', '/admin/users', 'user-01'],
+    ['Categories', '/admin/categories', 'ticket-01'],
     ['Events', '/admin/events', 'calendar'],
-    ['Approvals', '/admin/approvals', 'check-circle'],
+    ['Parkings', '/admin/parking', 'car-01'],
     ['Bookings', '/admin/bookings', 'ticket-01'],
     ['Payments', '/admin/payments', 'credit-card-01'],
-    ['Parking', '/admin/parking', 'car-01'],
+    ['Approvals', '/admin/approvals', 'check-circle'],
     ['Reports', '/admin/reports', 'bar-chart-square-02'],
-    ['Categories', '/admin/categories', 'ticket-01'],
+    ['Users', '/admin/users', 'user-01'],
     ['Notifications', '/admin/notifications', 'bell-01'],
     ['Settings', '/admin/settings', 'settings-01'],
   ];
@@ -287,6 +307,8 @@ export class Management {
       else if (/^admin\/organizers\/[^/]+$/.test(clean)) this.view.set('organizer-detail');
       else if (clean === 'admin/events') this.view.set('events');
       else if (clean === 'admin/events/create') this.view.set('admin-event-form');
+      else if (clean.endsWith('/edit') && clean.startsWith('admin/events/'))
+        this.view.set('event-edit');
       else if (clean.endsWith('/seats') && clean.startsWith('admin/events/'))
         this.view.set('seat-manage');
       else if (clean.endsWith('/ticket-pricing') && clean.startsWith('admin/events/'))
@@ -324,22 +346,62 @@ export class Management {
   }
   protected openAction(
     name: string,
-    mode: 'approve' | 'reject' | 'delete',
+    mode: 'approve' | 'reject' | 'delete' | 'cancel-event' | 'delete-event',
     approvalId?: number,
   ): void {
+    this.selectedEventActionId.set(null);
     this.selectedName.set(name);
     this.modalMode.set(mode);
     this.selectedApprovalId.set(approvalId ?? null);
+    this.actionReason.set('');
     this.showModal.set(true);
   }
   protected confirmAction(): void {
     if (this.actionLoading()) return;
+    const eventActionId = this.selectedEventActionId();
+    if (eventActionId && this.modalMode() === 'cancel-event') {
+      const reason = this.actionReason().trim();
+      if (!reason) {
+        this.flash('A cancellation reason is required.');
+        return;
+      }
+      this.actionLoading.set(true);
+      this.api.cancelEvent(eventActionId, reason).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+        next: (updated) => {
+          this.replaceEvent(updated);
+          this.showModal.set(false);
+          this.selectedEventActionId.set(null);
+          this.flash('Event cancelled and affected bookings, seats, parking and QR records were updated.');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+      return;
+    }
+    if (eventActionId && this.modalMode() === 'delete-event') {
+      this.actionLoading.set(true);
+      this.api.deleteEvent(eventActionId).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+        next: () => {
+          this.visibleEventRecords = this.visibleEventRecords.filter((event) => event.id !== eventActionId);
+          this.refreshEventRows();
+          this.showModal.set(false);
+          this.selectedEventActionId.set(null);
+          this.flash('Unused event deleted.');
+          this.go(this.role() === 'admin' ? '/admin/events' : '/organizer/my-events');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+      return;
+    }
     const approvalId = this.selectedApprovalId();
     if (approvalId && this.modalMode() !== 'delete') {
+      if (this.modalMode() === 'reject' && !this.actionReason().trim()) {
+        this.flash('A rejection reason is required.');
+        return;
+      }
       const request =
         this.modalMode() === 'approve'
           ? this.api.approve(approvalId)
-          : this.api.reject(approvalId, 'Rejected by administrator');
+          : this.api.reject(approvalId, this.actionReason().trim());
       this.actionLoading.set(true);
       request.pipe(finalize(() => this.actionLoading.set(false))).subscribe({
         next: (approval) => {
@@ -547,7 +609,7 @@ export class Management {
     const isEditing = this.view() === 'event-edit';
     const editingId = this.routeEventId();
     if (
-      (!isEditing && this.role() === 'admin' && !this.eventForm.organizerId) ||
+      (!isEditing && this.role() === 'admin' && this.eventForm.organizerId === 0) ||
       !this.eventForm.name ||
       (this.eventForm.venueMode === 'OurProperty' && !this.eventForm.venueId) ||
       (this.eventForm.venueMode === 'ExternalProperty' &&
@@ -593,7 +655,9 @@ export class Management {
     const request = isEditing && editingId
       ? this.api.updateEvent(editingId, payload)
       : this.role() === 'admin'
-        ? this.api.createEventForOrganizer(Number(this.eventForm.organizerId), payload)
+        ? this.eventForm.organizerId === -1
+          ? this.api.createAdminOwnedEvent(payload)
+          : this.api.createEventForOrganizer(Number(this.eventForm.organizerId), payload)
         : this.api.createEvent(payload);
     this.actionLoading.set(true);
     request.pipe(finalize(() => this.actionLoading.set(false))).subscribe({
@@ -764,6 +828,18 @@ export class Management {
       });
   }
 
+  protected deleteTicketRecord(ticket: TicketType): void {
+    if (this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api.deleteTicket(ticket.id).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+      next: () => {
+        this.eventTickets.update((items) => items.filter((item) => item.id !== ticket.id));
+        this.flash('Unused ticket type deleted.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
   protected addSeat(): void {
     if (this.actionLoading()) return;
     const event = this.selectedEvent();
@@ -830,6 +906,18 @@ export class Management {
       });
   }
 
+  protected deleteSeatRecord(seat: Seat): void {
+    if (this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api.deleteSeat(seat.id).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+      next: () => {
+        this.eventSeats.update((items) => items.filter((item) => item.id !== seat.id));
+        this.flash('Unused seat deleted.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
   protected regenerateEventQr(): void {
     const eventId = this.routeEventId();
     if (!eventId || this.actionLoading()) return;
@@ -856,20 +944,17 @@ export class Management {
   }
 
   protected cancelEvent(event: EventRow): void {
-    if (this.actionLoading()) return;
-    const reason = window.prompt('Reason for cancelling this event?')?.trim();
-    if (!reason) return;
-    this.actionLoading.set(true);
-    this.api
-      .cancelEvent(event.backendId, reason)
-      .pipe(finalize(() => this.actionLoading.set(false)))
-      .subscribe({
-        next: (updated) => {
-          this.replaceEvent(updated);
-          this.flash('Event cancelled and affected bookings updated.');
-        },
-        error: (error) => this.flash(apiErrorMessage(error)),
-      });
+    this.openAction(event.title, 'cancel-event');
+    this.selectedEventActionId.set(event.backendId);
+  }
+
+  protected reportTicketsSold(report: EventReport): number {
+    return report.tickets.reduce((total, ticket) => total + ticket.soldQuantity, 0);
+  }
+
+  protected deleteEvent(event: EventRow): void {
+    this.openAction(event.title, 'delete-event');
+    this.selectedEventActionId.set(event.backendId);
   }
 
   protected addParkingAllocation(): void {
@@ -894,6 +979,172 @@ export class Management {
         },
         error: (error) => this.flash(apiErrorMessage(error)),
       });
+  }
+
+  protected deleteParkingAllocation(allocationId: number): void {
+    if (this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api.deleteParkingAllocation(allocationId)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: () => {
+          this.flash('Unused parking allocation removed.');
+          this.loadRouteEntity(this.router.url);
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected toggleParkingArea(area: ParkingArea): void {
+    if (this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api.updateParkingArea(area.id, { ...area, isActive: !area.isActive })
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.parkingAreas.update((items) => items.map((item) => item.id === updated.id ? updated : item));
+          this.flash(`Parking area ${updated.isActive ? 'activated' : 'deactivated'}.`);
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected createParkingArea(): void {
+    if (this.actionLoading()) return;
+    if (!this.parkingAreaForm.venueId || !this.parkingAreaForm.name.trim() || this.parkingAreaForm.capacity < 1) {
+      this.flash('Venue, parking area name and positive capacity are required.');
+      return;
+    }
+    this.actionLoading.set(true);
+    this.api.createParkingArea({
+      venueId: Number(this.parkingAreaForm.venueId),
+      name: this.parkingAreaForm.name.trim(),
+      description: this.parkingAreaForm.description.trim() || null,
+      capacity: Number(this.parkingAreaForm.capacity),
+    }).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+      next: (area) => {
+        this.parkingAreas.update((items) => [...items, area]);
+        this.parkingAreaForm.name = '';
+        this.parkingAreaForm.description = '';
+        this.selectParkingArea(area.id);
+        this.flash('Parking area created. Generate its zones and slots next.');
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected selectParkingArea(areaId: number): void {
+    this.selectedParkingAreaId.set(Number(areaId));
+    this.parkingAreaSlots.set([]);
+    if (!areaId) return;
+    this.api.parkingSlots(Number(areaId)).subscribe({
+      next: (slots) => this.parkingAreaSlots.set(slots),
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected bulkCreateParkingSlots(): void {
+    const areaId = this.selectedParkingAreaId();
+    const total = Number(this.bulkParkingForm.zoneCount) * Number(this.bulkParkingForm.slotsPerZone);
+    if (!areaId || total < 1 || total > 500) {
+      this.flash('Select a parking area and generate between 1 and 500 slots.');
+      return;
+    }
+    this.actionLoading.set(true);
+    this.api.createParkingSlotsBulk(areaId, {
+      startingZone: this.bulkParkingForm.startingZone.trim().toUpperCase(),
+      zoneCount: Number(this.bulkParkingForm.zoneCount),
+      slotsPerZone: Number(this.bulkParkingForm.slotsPerZone),
+      startingNumber: Number(this.bulkParkingForm.startingNumber),
+      slotType: this.bulkParkingForm.slotType,
+    }).pipe(finalize(() => this.actionLoading.set(false))).subscribe({
+      next: (created) => {
+        this.parkingAreaSlots.update((items) => [...items, ...created]);
+        this.flash(`${created.length} parking slots generated from live backend records.`);
+      },
+      error: (error) => this.flash(apiErrorMessage(error)),
+    });
+  }
+
+  protected chooseAdminReportOrganizer(organizerId: number): void {
+    this.adminReportOrganizerId.set(Number(organizerId));
+    this.adminReportEventId.set(0);
+    this.generatedAdminEventReport.set(null);
+  }
+
+  protected generateAdminEventReport(): void {
+    const organizerId = this.adminReportOrganizerId();
+    const eventId = this.adminReportEventId();
+    if (!organizerId || !eventId) {
+      this.flash('Select an organizer and one of their events.');
+      return;
+    }
+    this.actionLoading.set(true);
+    this.api.adminOrganizerEventReport(organizerId, eventId)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (report) => {
+          this.generatedAdminEventReport.set(report);
+          this.flash('Live event report generated.');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected sendAdminEventReport(): void {
+    const organizerId = this.adminReportOrganizerId();
+    const eventId = this.adminReportEventId();
+    if (!organizerId || !eventId || this.actionLoading()) return;
+    this.actionLoading.set(true);
+    this.api.sendAdminOrganizerEventReport(organizerId, eventId)
+      .pipe(finalize(() => this.actionLoading.set(false)))
+      .subscribe({
+        next: (report) => {
+          this.generatedAdminEventReport.set(report);
+          this.flash('Report emailed and in-app notification created.');
+        },
+        error: (error) => this.flash(apiErrorMessage(error)),
+      });
+  }
+
+  protected async downloadEventReport(report = this.generatedAdminEventReport() ?? this.eventReport()): Promise<void> {
+    if (!report) {
+      this.flash('Generate an event report first.');
+      return;
+    }
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    doc.setFillColor(26, 92, 62);
+    doc.rect(0, 0, 210, 34, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.text('EVENTORA EVENT REPORT', 16, 22);
+    doc.setTextColor(25, 35, 30);
+    doc.setFontSize(16);
+    doc.text(report.eventName, 16, 49);
+    doc.setFontSize(10);
+    const lines = [
+      `Organizer: ${report.organizerName || 'Admin-owned'} (${report.organizerEmail || 'n/a'})`,
+      `Status: ${report.eventStatus}`,
+      `Schedule: ${new Date(report.startDateTime).toLocaleString()} - ${new Date(report.endDateTime).toLocaleString()}`,
+      `Venue: ${report.venue}`,
+      `Bookings: ${report.totalBookings} total, ${report.confirmedBookings} confirmed, ${report.cancelledBookings} cancelled`,
+      `Customers: ${report.customerCount}`,
+      `Seats: ${report.seatsBooked} booked / ${report.seatCapacity} capacity`,
+      `Parking: ${report.parkingBooked} booked / ${report.parkingCapacity} capacity / ${report.parkingAvailable} available`,
+      `Ticket revenue: LKR ${report.ticketRevenue.toLocaleString()}`,
+      `Parking revenue: LKR ${report.parkingRevenue.toLocaleString()}`,
+      `Total revenue: LKR ${report.totalRevenue.toLocaleString()}`,
+      `Refunds: LKR ${report.refunds.toLocaleString()}`,
+      '',
+      'Ticket breakdown:',
+      ...report.tickets.map((ticket) => `• ${ticket.ticketType}: ${ticket.soldQuantity}/${ticket.configuredQuantity} sold — LKR ${ticket.revenue.toLocaleString()}`),
+      '',
+      `Generated from live database data: ${new Date(report.generatedAtUtc).toLocaleString()}`,
+    ];
+    doc.text(lines, 16, 60, { maxWidth: 178, lineHeightFactor: 1.55 });
+    doc.save(`event-report-${report.eventId}.pdf`);
+    this.flash('Event report PDF downloaded.');
   }
 
   private loadData(): void {
@@ -1000,9 +1251,9 @@ export class Management {
           seats: this.api.seats(eventId),
           parking: this.api.eventParkingLayout(eventId),
           parkingAreas: event.venueId ? this.api.parkingAreas(event.venueId) : of([] as ParkingArea[]),
-          report:
+      report:
             this.role() === 'organizer'
-              ? this.api.organizerEventRevenue(eventId).pipe(catchError(() => of(null)))
+              ? this.api.organizerEventReport(eventId).pipe(catchError(() => of(null)))
               : of(null),
         }),
       ),
@@ -1052,7 +1303,7 @@ export class Management {
     return {
       id: String(event.id),
       backendId: event.id,
-      organizerId: event.organizerId,
+      organizerId: event.organizerId ?? null,
       categoryId: event.eventCategoryId,
       title: event.name,
       venue:

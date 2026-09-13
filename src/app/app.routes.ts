@@ -50,6 +50,7 @@ const adminPaths = [
   'admin/users',
   'admin/events',
   'admin/events/create',
+  'admin/events/:id/edit',
   'admin/events/:id/layout',
   'admin/events/:id/seats',
   'admin/events/:id/ticket-pricing',

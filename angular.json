@@ -23,6 +23,13 @@
             },
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "core-js",
+              "raf",
+              "rgbcolor",
+              "html2canvas"
+            ],
             "assets": [
               {
                 "glob": "**/*",
@@ -41,8 +48,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "45kB",
-                  "maximumError": "55kB"
+                  "maximumWarning": "52kB",
+                  "maximumError": "60kB"
                 }
               ],
               "outputHashing": "all"

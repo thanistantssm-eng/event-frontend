@@ -15,6 +15,17 @@ describe('Portal navigation', () => {
       customerDashboard: () => of(null),
       favorites: () => of([]),
       myTransactionNotifications: () => of([]),
+      tickets: () => of([{ id: 1, eventId: 10, name: 'General', price: 2500, quantity: 50, isActive: true }]),
+      seats: () => of([]),
+      eventParkingLayout: () => of({
+        eventId: 10,
+        allocations: [{ id: 5, eventId: 10, parkingAreaId: 3, parkingAreaName: 'Sky Arena Parking', allocatedSlotCount: 3, parkingFee: 500, isActive: true }],
+        slots: [
+          { id: 31, parkingAreaId: 3, slotNumber: 'A01', slotType: 'Standard', isActive: true, status: 'Available', parkingFee: 500 },
+          { id: 32, parkingAreaId: 3, slotNumber: 'A02', slotType: 'Accessible', isActive: true, status: 'Available', parkingFee: 500 },
+          { id: 33, parkingAreaId: 3, slotNumber: 'A03', slotType: 'EV Charging', isActive: true, status: 'Occupied', parkingFee: 500 },
+        ],
+      }),
     };
     const auth = {
       session: signal({
@@ -53,5 +64,24 @@ describe('Portal navigation', () => {
     expect(element.querySelector('.profile-trigger')).toBeTruthy();
     expect(element.querySelector('.mobile-menu')).toBeTruthy();
     expect(element.querySelector('a[href="/customer/tickets"]')?.textContent).toContain('Tickets');
+  });
+
+  it('renders an interactive parking map from backend layout records', () => {
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as {
+      syncView(url: string): void;
+      loadEventBundle(eventId: number): void;
+    };
+    component.syncView('/customer/booking/parking/10');
+    component.loadEventBundle(10);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const slots = element.querySelectorAll<HTMLButtonElement>('.parking-space');
+    expect(slots.length).toBe(3);
+    expect(element.querySelector('.parking-zone')?.textContent).toContain('Sky Arena Parking');
+    expect(element.querySelector('.no-parking-choice')?.textContent).toContain('No Parking');
+    expect(slots[2].disabled).toBe(true);
+    expect(slots[2].textContent).toContain('Booked');
   });
 });

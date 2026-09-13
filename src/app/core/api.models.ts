@@ -116,7 +116,7 @@ export interface EventRecord {
   name: string;
   description: string;
   eventType: 'SeatBased' | 'NonSeatBased' | string;
-  organizerId: number;
+  organizerId?: number | null;
   venueId?: number | null;
   venueMode?: 'OurProperty' | 'ExternalProperty' | string;
   externalVenueName?: string | null;
@@ -250,6 +250,9 @@ export interface Booking {
   quantity?: number;
   seats: string[];
   parkingSlot?: string | null;
+  parkingArea?: string | null;
+  parkingType?: string | null;
+  parkingFee?: number;
   paymentStatus: string;
   createdAtUtc: string;
 }
@@ -394,4 +397,46 @@ export interface OrganizerEventRevenue {
   ticketRevenue: number;
   parkingRevenue: number;
   totalRevenue: number;
+}
+
+export interface EventReport {
+  eventId: number;
+  eventName: string;
+  eventStatus: string;
+  startDateTime: string;
+  endDateTime: string;
+  venue: string;
+  organizerId?: number | null;
+  organizerName?: string | null;
+  organizerEmail?: string | null;
+  totalBookings: number;
+  confirmedBookings: number;
+  cancelledBookings: number;
+  customerCount: number;
+  seatCapacity: number;
+  seatsBooked: number;
+  parkingCapacity: number;
+  parkingBooked: number;
+  parkingAvailable: number;
+  parkingReservations: number;
+  ticketRevenue: number;
+  parkingRevenue: number;
+  totalRevenue: number;
+  refunds: number;
+  tickets: Array<{
+    ticketType: string;
+    configuredQuantity: number;
+    soldQuantity: number;
+    revenue: number;
+  }>;
+  bookingStatuses: Array<{ status: string; count: number }>;
+  payments: {
+    completed: number;
+    pending: number;
+    failed: number;
+    refunded: number;
+    revenue: number;
+    refunds: number;
+  };
+  generatedAtUtc: string;
 }

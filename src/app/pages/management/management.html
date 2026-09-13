@@ -192,8 +192,15 @@
                 <button type="button" (click)="go('/organizer/events/' + event.backendId + '/edit')">
                   Edit
                 </button>
+                <button class="danger-btn" type="button" (click)="deleteEvent(event)">Delete</button>
               }
-              @if (role() === 'admin' && event.status === 'Approved') {
+              @if (role() === 'admin' && (event.status === 'Draft' || event.status === 'Rejected' || event.status === 'Published')) {
+                <button type="button" (click)="go('/admin/events/' + event.backendId + '/edit')">Edit</button>
+                @if (event.bookings === 0) {
+                  <button class="danger-btn" type="button" (click)="deleteEvent(event)">Delete</button>
+                }
+              }
+              @if (role() === 'admin' && (event.status === 'Approved' || (event.status === 'Draft' && event.organizerId === null))) {
                 <button class="primary" type="button" (click)="publish(event)">Publish</button>
               }
             </div>
@@ -243,6 +250,7 @@
             <label
               >Organizer<select name="organizer" [(ngModel)]="eventForm.organizerId" required>
                 <option [ngValue]="0">Select organizer</option>
+                <option [ngValue]="-1">Admin-owned event (no organizer approval)</option>
                 @for (organizer of organizers(); track organizer.id) {
                   <option [ngValue]="organizer.id">
                     {{ organizer.organizationName }} — {{ organizer.email }}
@@ -408,11 +416,18 @@
               <button type="button" (click)="go('/organizer/events/' + event.backendId + '/edit')">
                 {{ event.status === 'Rejected' ? 'Edit rejected event' : 'Edit event' }}
               </button>
+              <button class="danger-btn" type="button" (click)="deleteEvent(event)">Delete unused event</button>
+            }
+            @if (role() === 'admin' && (event.status === 'Draft' || event.status === 'Rejected' || event.status === 'Published')) {
+              <button type="button" (click)="go('/admin/events/' + event.backendId + '/edit')">Edit Event</button>
+              @if (event.bookings === 0) {
+                <button class="danger-btn" type="button" (click)="deleteEvent(event)">Delete unused event</button>
+              }
             }
             @if (event.status !== 'Cancelled') {
               <button class="danger-btn" type="button" [disabled]="actionLoading()" (click)="cancelEvent(event)">Cancel Event</button>
             }
-            @if (role() === 'admin' && event.status === 'Approved') {
+            @if (role() === 'admin' && (event.status === 'Approved' || (event.status === 'Draft' && event.organizerId === null))) {
               <button class="primary" type="button" (click)="publish(event)">Publish Event</button>
             }
           </section>
@@ -498,7 +513,7 @@
                 ><b>{{ ticket.name }}</b
                 ><small>{{ ticket.description || 'No description' }}</small></span
               ><strong>LKR {{ ticket.price | number }}</strong
-              ><em>{{ ticket.quantity }} configured</em>
+              ><em>{{ ticket.quantity }} configured</em><button class="danger-btn" type="button" (click)="deleteTicketRecord(ticket)">Delete</button>
             </div>
           } @empty {
             <div class="empty-state"><p>No ticket types configured.</p></div>
@@ -559,7 +574,7 @@
           <div class="seat-grid">
             @for (seat of eventSeats(); track seat.id) {
               <span [class.selected]="seat.status === 'Available'"
-                >{{ seat.seatNumber }}<small>{{ ticketName(seat.ticketTypeId) }}</small></span
+                >{{ seat.seatNumber }}<small>{{ ticketName(seat.ticketTypeId) }}</small><button type="button" aria-label="Delete seat" (click)="deleteSeatRecord(seat)">×</button></span
               >
             } @empty {
               <div class="empty-state"><p>No seats configured.</p></div>
@@ -607,7 +622,7 @@
                 ><b>{{ allocation.parkingAreaName || 'Area #' + allocation.parkingAreaId }}</b
                 ><small>Event allocation</small></span
               ><strong>{{ allocation.allocatedSlotCount }} slots</strong
-              ><em>LKR {{ allocation.parkingFee | number }}</em>
+              ><em>LKR {{ allocation.parkingFee | number }}</em><button class="danger-btn" type="button" (click)="deleteParkingAllocation(allocation.id)">Remove</button>
             </div>
           } @empty {
             <div class="empty-state"><p>No parking allocated to this event.</p></div>
@@ -647,13 +662,17 @@
 
       @if (view() === 'event-reports') {
         @if (eventReport(); as report) {
+          <section class="manage-title"><div><span>LIVE EVENT REPORT</span><h1>{{ report.eventName }}</h1><p>Generated {{ report.generatedAtUtc | date:'medium' }} from bookings, parking and payments.</p></div><button class="primary" type="button" (click)="downloadEventReport(report)">Download PDF</button></section>
           <section class="metric-grid revenue-metrics">
             <article><small>Total Revenue</small><b>LKR {{ report.totalRevenue | number }}</b></article>
             <article><small>Ticket Revenue</small><b>LKR {{ report.ticketRevenue | number }}</b></article>
             <article><small>Parking Revenue</small><b>LKR {{ report.parkingRevenue | number }}</b></article>
             <article><small>Confirmed Bookings</small><b>{{ report.confirmedBookings }}</b></article>
-            <article><small>Tickets Sold</small><b>{{ report.ticketsSold }}</b></article>
+            <article><small>Tickets Sold</small><b>{{ reportTicketsSold(report) }}</b></article>
             <article><small>Parking Reservations</small><b>{{ report.parkingReservations }}</b></article>
+            <article><small>Seats Booked</small><b>{{ report.seatsBooked }} / {{ report.seatCapacity }}</b></article>
+            <article><small>Parking Available</small><b>{{ report.parkingAvailable }} / {{ report.parkingCapacity }}</b></article>
+            <article><small>Refunds</small><b>LKR {{ report.refunds | number }}</b></article>
           </section>
         } @else {
           <section class="data-card"><div class="empty-state"><h3>No revenue yet</h3><p>Confirmed paid bookings will appear in this event report.</p></div></section>
@@ -995,25 +1014,58 @@
         <section class="manage-title">
           <div>
             <span>PARKING</span>
-            <h1>Parking Areas</h1>
-            <p>Areas currently configured under venues.</p>
+            <h1>Parking Areas & Visual Layouts</h1>
+            <p>Create venue parking, bulk-generate zones and preview real slot records.</p>
           </div>
         </section>
         <section class="data-card">
+          <div class="section-heading"><div><span>NEW AREA</span><h2>Create Parking Area</h2></div></div>
+          <form class="form-grid" (ngSubmit)="createParkingArea()">
+            <label>Venue<select name="parkingVenue" [(ngModel)]="parkingAreaForm.venueId" required><option [ngValue]="0">Select venue</option>@for (venue of activeVenues(); track venue.id) { <option [ngValue]="venue.id">{{ venue.name }} — {{ venue.propertyName }}</option> }</select></label>
+            <label>Area Name<input name="parkingAreaName" [(ngModel)]="parkingAreaForm.name" required /></label>
+            <label>Capacity<input name="parkingAreaCapacity" type="number" min="1" [(ngModel)]="parkingAreaForm.capacity" required /></label>
+            <label>Description<input name="parkingAreaDescription" [(ngModel)]="parkingAreaForm.description" /></label>
+            <button class="primary" type="submit" [disabled]="actionLoading()">Create Area</button>
+          </form>
+        </section>
+        <section class="data-card">
+          <div class="section-heading"><div><span>AREAS</span><h2>Select an area to manage slots</h2></div></div>
           @for (area of parkingAreas(); track area.id) {
-            <div class="data-row">
+            <div class="data-row" [class.selected]="selectedParkingAreaId() === area.id">
               <span
                 ><b>{{ area.name }}</b
                 ><small
                   >Venue #{{ area.venueId }} • {{ area.description || 'No description' }}</small
                 ></span
               ><strong>{{ area.capacity }} slots</strong
-              ><em>{{ area.isActive ? 'Active' : 'Inactive' }}</em>
+              ><em>{{ area.isActive ? 'Active' : 'Inactive' }}</em><button type="button" (click)="selectParkingArea(area.id)">Manage Slots</button><button type="button" (click)="toggleParkingArea(area)">{{ area.isActive ? 'Deactivate' : 'Activate' }}</button>
             </div>
           } @empty {
             <div class="empty-state"><h3>No parking areas</h3></div>
           }
         </section>
+        @if (selectedParkingAreaId()) {
+          <section class="data-card">
+            <div class="section-heading"><div><span>BULK GENERATOR</span><h2>Generate Parking Zones</h2></div><small>Duplicate and capacity checks run in the backend.</small></div>
+            <form class="form-grid" (ngSubmit)="bulkCreateParkingSlots()">
+              <label>Starting Zone<input name="parkingStartZone" maxlength="1" [(ngModel)]="bulkParkingForm.startingZone" /></label>
+              <label>Zones<input name="parkingZones" type="number" min="1" max="26" [(ngModel)]="bulkParkingForm.zoneCount" /></label>
+              <label>Slots / Zone<input name="parkingSlotsPerZone" type="number" min="1" max="100" [(ngModel)]="bulkParkingForm.slotsPerZone" /></label>
+              <label>Starting Number<input name="parkingStartNumber" type="number" min="1" [(ngModel)]="bulkParkingForm.startingNumber" /></label>
+              <label>Parking Type<select name="parkingSlotType" [(ngModel)]="bulkParkingForm.slotType"><option>Standard</option><option>Premium</option><option>VIP</option><option>Accessible</option><option>EV Charging</option></select></label>
+              <button class="primary" type="submit" [disabled]="actionLoading()">Generate {{ bulkParkingForm.zoneCount * bulkParkingForm.slotsPerZone }} Slots</button>
+            </form>
+            <div class="admin-parking-preview">
+              <div class="preview-road">MAIN ENTRANCE &nbsp; ↓ &nbsp; → ARRIVAL LANE →</div>
+              <div class="parking-preview-grid">
+                @for (slot of parkingAreaSlots(); track slot.id) {
+                  <span [class.accessible]="slot.slotType === 'Accessible'" [class.ev]="slot.slotType === 'EV Charging'"><b>{{ slot.slotNumber }}</b><small>{{ slot.slotType || 'Standard' }}</small></span>
+                } @empty { <div class="empty-state"><p>No slots yet. Use the bulk generator above.</p></div> }
+              </div>
+              <div class="preview-road">← DEPARTURE LANE ← &nbsp; EVENT ENTRANCE ↑</div>
+            </div>
+          </section>
+        }
       }
 
       @if (view() === 'reports' || view() === 'admin-reports') {
@@ -1039,6 +1091,23 @@
               <small>Total Revenue</small><b>LKR {{ report.totalRevenue | number }}</b>
             </article>
           </section>
+          <section class="data-card report-builder">
+            <div class="section-heading"><div><span>ORGANIZER-WISE REPORT</span><h2>Generate an Event Report</h2></div><small>Only events belonging to the selected organizer are available.</small></div>
+            <div class="form-grid">
+              <label>Organizer<select [ngModel]="adminReportOrganizerId()" (ngModelChange)="chooseAdminReportOrganizer($event)"><option [ngValue]="0">Select organizer</option>@for (organizer of organizers(); track organizer.id) { <option [ngValue]="organizer.id">{{ organizer.organizationName }} — {{ organizer.email }}</option> }</select></label>
+              <label>Event<select [ngModel]="adminReportEventId()" (ngModelChange)="adminReportEventId.set($event); generatedAdminEventReport.set(null)" [disabled]="!adminReportOrganizerId()"><option [ngValue]="0">Select event</option>@for (event of adminReportEvents(); track event.backendId) { <option [ngValue]="event.backendId">{{ event.title }} — {{ event.status }}</option> }</select></label>
+              <button class="primary" type="button" [disabled]="actionLoading()" (click)="generateAdminEventReport()">Generate Report</button>
+            </div>
+          </section>
+          @if (generatedAdminEventReport(); as eventReport) {
+            <section class="data-card">
+              <div class="section-heading"><div><span>{{ eventReport.organizerName }}</span><h2>{{ eventReport.eventName }}</h2></div><div class="action-row"><button type="button" (click)="downloadEventReport(eventReport)">Download PDF</button><button class="primary" type="button" [disabled]="actionLoading()" (click)="sendAdminEventReport()">Send to Organizer</button></div></div>
+              <div class="report-detail-grid">
+                <article><small>Bookings</small><b>{{ eventReport.totalBookings }}</b></article><article><small>Customers</small><b>{{ eventReport.customerCount }}</b></article><article><small>Tickets / Seats</small><b>{{ reportTicketsSold(eventReport) }} / {{ eventReport.seatsBooked }}</b></article><article><small>Parking</small><b>{{ eventReport.parkingBooked }} / {{ eventReport.parkingCapacity }}</b></article><article><small>Parking Revenue</small><b>LKR {{ eventReport.parkingRevenue | number }}</b></article><article><small>Total Revenue</small><b>LKR {{ eventReport.totalRevenue | number }}</b></article><article><small>Refunds</small><b>LKR {{ eventReport.refunds | number }}</b></article><article><small>Generated</small><b>{{ eventReport.generatedAtUtc | date:'short' }}</b></article>
+              </div>
+              <div class="report-breakdown">@for (ticket of eventReport.tickets; track ticket.ticketType) { <div class="data-row"><span><b>{{ ticket.ticketType }}</b><small>{{ ticket.soldQuantity }} of {{ ticket.configuredQuantity }} sold</small></span><strong>LKR {{ ticket.revenue | number }}</strong></div> }</div>
+            </section>
+          }
         } @else {
           @if (ticketSales(); as sales) {
             <section class="metric-grid">
@@ -1163,8 +1232,11 @@
   @if (showModal()) {
     <div class="modal-backdrop">
       <section class="confirm-modal">
-        <h2>{{ modalMode() | titlecase }} {{ selectedName() }}?</h2>
-        <p>This action updates the backend workflow.</p>
+        <h2>{{ modalMode() === 'cancel-event' ? 'Cancel' : modalMode() === 'delete-event' ? 'Delete' : (modalMode() | titlecase) }} {{ selectedName() }}?</h2>
+        <p>{{ modalMode() === 'delete-event' ? 'Deletion is allowed only for safe events without active customer activity. Use cancellation otherwise.' : 'This action updates the backend workflow.' }}</p>
+        @if (modalMode() === 'cancel-event' || modalMode() === 'reject') {
+          <label class="modal-field">{{ modalMode() === 'cancel-event' ? 'Cancellation reason' : 'Rejection reason' }}<textarea [ngModel]="actionReason()" (ngModelChange)="actionReason.set($event)" placeholder="Explain the reason clearly" required></textarea></label>
+        }
         <div>
           <button type="button" (click)="showModal.set(false)">Cancel</button
           ><button class="primary" type="button" (click)="confirmAction()">Confirm</button>

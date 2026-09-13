@@ -15,6 +15,7 @@ import {
   FavoriteEvent,
   EventQuery,
   EventRecord,
+  EventReport,
   EventWrite,
   Organizer,
   OrganizerDashboard,
@@ -145,6 +146,9 @@ export class ApiService {
   createEventForOrganizer(organizerId: number, payload: EventWrite) {
     return this.http.post<EventRecord>(`${API_ROOT}/events/admin/for-organizer/${organizerId}`, payload);
   }
+  createAdminOwnedEvent(payload: EventWrite) {
+    return this.http.post<EventRecord>(`${API_ROOT}/events/admin-owned`, payload);
+  }
   updateEvent(id: number, payload: EventWrite) {
     return this.http.put<EventRecord>(`${API_ROOT}/events/${id}`, payload);
   }
@@ -230,6 +234,15 @@ export class ApiService {
   parkingSlot(id: number) { return this.http.get<ParkingSlot>(`${API_ROOT}/parking/slots/${id}`); }
   createParkingSlot(areaId: number, payload: Pick<ParkingSlot, 'slotNumber'> & Partial<ParkingSlot>) {
     return this.http.post<ParkingSlot>(`${API_ROOT}/parking/areas/${areaId}/slots`, payload);
+  }
+  createParkingSlotsBulk(areaId: number, payload: {
+    startingZone: string;
+    zoneCount: number;
+    slotsPerZone: number;
+    startingNumber: number;
+    slotType?: string | null;
+  }) {
+    return this.http.post<ParkingSlot[]>(`${API_ROOT}/parking/areas/${areaId}/slots/bulk`, payload);
   }
   updateParkingSlot(id: number, payload: Pick<ParkingSlot, 'slotNumber' | 'isActive'> & Partial<ParkingSlot>) {
     return this.http.put<ParkingSlot>(`${API_ROOT}/parking/slots/${id}`, payload);
@@ -322,6 +335,20 @@ export class ApiService {
     return this.http.put<void>(`${API_ROOT}/notifications/read-all`, {});
   }
   adminReport() { return this.http.get<AdminReport>(`${API_ROOT}/reports/admin-summary`); }
+  organizerEventReport(eventId: number) {
+    return this.http.get<EventReport>(`${API_ROOT}/reports/organizer/events/${eventId}`);
+  }
+  adminOrganizerEventReport(organizerId: number, eventId: number) {
+    return this.http.get<EventReport>(
+      `${API_ROOT}/reports/admin/organizers/${organizerId}/events/${eventId}`,
+    );
+  }
+  sendAdminOrganizerEventReport(organizerId: number, eventId: number) {
+    return this.http.post<EventReport>(
+      `${API_ROOT}/reports/admin/organizers/${organizerId}/events/${eventId}/send`,
+      {},
+    );
+  }
   myCustomerReport() {
     return this.http.get<CustomerReport>(`${API_ROOT}/reports/customer/me`);
   }

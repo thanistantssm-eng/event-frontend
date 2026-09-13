@@ -61,7 +61,66 @@
         <section class="booking-layout"><article class="content-card">
           @if (view() === 'tickets') { <h1>Select a Ticket</h1><p>Choose one active ticket type.</p>@for (ticket of ticketTypes(); track ticket.id) { <button class="choice-row" type="button" [class.selected]="selectedTicketId() === ticket.id" (click)="chooseTicket(ticket.id.toString())"><span><b>{{ ticket.name }}</b><small>{{ ticket.description || (ticket.quantity + ' configured') }}</small></span><strong>LKR {{ ticket.price | number }}</strong></button> } @empty { <div class="empty-panel"><h3>No ticket types available</h3><p>This event cannot be booked until its organizer adds an active ticket type.</p></div> }<div class="action-row"><button class="primary-btn" type="button" [disabled]="!selectedTicketId()" (click)="go(activeEvent().format === 'Seat Based' ? '/customer/booking/seats/' + activeEventId() : '/customer/booking/parking/' + activeEventId())">Continue →</button></div> }
           @if (view() === 'seats') { <h1>Select a Seat</h1><p>Showing seats mapped to {{ selectedTicketType()?.name || 'your ticket' }}.</p><div class="seat-map">@for (seat of selectableSeats(); track seat.id) { <button type="button" [class.selected]="selectedSeatId() === seat.id" [disabled]="seat.status !== 'Available'" (click)="chooseSeat(seat)">{{ seat.seatNumber }}</button> } @empty { <div class="empty-panel"><h3>No seats available</h3><p>No available seats are mapped to this ticket type.</p></div> }</div><div class="action-row"><button type="button" (click)="go('/customer/booking/tickets/' + activeEventId())">Back</button><button class="primary-btn" type="button" [disabled]="!selectedSeatId()" (click)="go('/customer/booking/parking/' + activeEventId())">Continue →</button></div> }
-          @if (view() === 'parking-select') { <h1>Optional Parking</h1><p>Select one available slot, or continue without parking.</p><button class="choice-row" type="button" [class.selected]="!selectedParkingId()" (click)="clearParking()"><span><b>No parking</b><small>Continue without a parking reservation.</small></span><strong>LKR 0</strong></button>@for (slot of availableParking(); track slot.id) { <button class="choice-row" type="button" [class.selected]="selectedParkingId() === slot.id" [disabled]="slot.status !== 'Available'" (click)="chooseParking(slot)"><span><b>{{ slot.slotNumber }}</b><small>{{ slot.slotType || 'Parking slot' }}</small></span><strong>LKR {{ slot.parkingFee | number }}</strong></button> }<div class="action-row"><button type="button" (click)="go(activeEvent().format === 'Seat Based' ? '/customer/booking/seats/' + activeEventId() : '/customer/booking/tickets/' + activeEventId())">Back</button><button class="primary-btn" type="button" (click)="go('/customer/booking/summary/' + activeEventId())">Review booking →</button></div> }
+          @if (view() === 'parking-select') {
+            <section class="parking-selection-shell">
+              <div class="parking-map-heading">
+                <div><span>OPTIONAL ADD-ON</span><h1>Choose Your Parking Space</h1><p>Select an exact available slot, or continue without parking.</p></div>
+                <div class="parking-legend" aria-label="Parking status legend">
+                  <span class="available">Available</span><span class="selected">Selected by you</span><span class="booked">Booked</span><span class="unavailable">Unavailable</span><span class="accessible">♿ Accessible</span><span class="ev">⚡ EV charging</span>
+                </div>
+              </div>
+
+              <button class="no-parking-choice" type="button" [class.selected]="!selectedParkingId()" (click)="clearParking()">
+                <span aria-hidden="true">↗</span><span><b>No Parking</b><small>Continue without parking — LKR 0</small></span><strong>{{ !selectedParkingId() ? 'Selected' : 'Choose' }}</strong>
+              </button>
+
+              @if (parkingZones().length) {
+                <div class="parking-map" aria-label="Interactive event parking map">
+                  <div class="map-gate main-gate">MAIN ENTRANCE <b>↓</b></div>
+                  <div class="map-road road-top"><span>→ &nbsp; ARRIVAL LANE &nbsp; →</span></div>
+                  <div class="parking-zone-grid">
+                    @for (zone of parkingZones(); track zone.id) {
+                      <section class="parking-zone">
+                        <header><span>{{ zone.zone }}</span><div><b>{{ zone.parkingAreaName || 'Event Parking' }}</b><small>{{ zone.slots[0]?.slotType || 'Standard Parking' }} • LKR {{ zone.parkingFee | number }}</small></div></header>
+                        <div class="parking-space-grid">
+                          @for (slot of zone.slots; track slot.id) {
+                            <button
+                              type="button"
+                              class="parking-space"
+                              [class.selected]="selectedParkingId() === slot.id"
+                              [class.booked]="slot.status === 'Occupied'"
+                              [class.unavailable]="!slot.isActive || slot.status === 'Disabled'"
+                              [class.accessible]="slot.slotType?.toLowerCase()?.includes('accessible')"
+                              [class.ev]="slot.slotType?.toLowerCase()?.includes('ev')"
+                              [disabled]="slot.status !== 'Available'"
+                              [attr.aria-label]="slot.slotNumber + ', ' + (slot.slotType || 'standard') + ', ' + slot.status"
+                              (click)="chooseParking(slot)"
+                            >
+                              <span>{{ slot.slotType?.toLowerCase()?.includes('accessible') ? '♿' : slot.slotType?.toLowerCase()?.includes('ev') ? '⚡' : '▰' }}</span>
+                              <b>{{ slot.slotNumber }}</b><small>{{ slot.status === 'Occupied' ? 'Booked' : slot.status }}</small>
+                            </button>
+                          }
+                        </div>
+                      </section>
+                    }
+                  </div>
+                  <div class="map-road road-bottom"><span>← &nbsp; DEPARTURE LANE &nbsp; ←</span></div>
+                  <div class="map-landscape"><i>♣</i><i>♣</i><div class="map-gate event-gate">EVENT ENTRANCE <b>↑</b></div><i>♣</i><i>♣</i></div>
+                </div>
+              } @else {
+                <div class="empty-panel parking-empty"><h3>Parking is not available for this Event.</h3><p>You can continue normally without a parking reservation.</p></div>
+              }
+
+              @if (selectedParkingSlot(); as slot) {
+                <aside class="selected-parking-panel">
+                  <div><span>SELECTED SLOT</span><h2>{{ zoneLabel(slot.slotNumber) }} — {{ slot.slotNumber }}</h2><p>{{ selectedParkingArea()?.parkingAreaName || 'Event parking area' }}</p></div>
+                  <dl><div><dt>Parking Type</dt><dd>{{ slot.slotType || 'Standard' }}</dd></div><div><dt>Parking Fee</dt><dd>LKR {{ slot.parkingFee | number }}</dd></div><div><dt>Availability</dt><dd class="available-text">Available</dd></div></dl>
+                  <button type="button" (click)="clearParking()">Change selection</button>
+                </aside>
+              }
+            </section>
+            <div class="action-row"><button type="button" (click)="go(activeEvent().format === 'Seat Based' ? '/customer/booking/seats/' + activeEventId() : '/customer/booking/tickets/' + activeEventId())">Back</button><button class="primary-btn" type="button" (click)="go('/customer/booking/summary/' + activeEventId())">Review booking →</button></div>
+          }
         </article><app-order-summary [eventName]="activeEvent().title" [eventDate]="activeEvent().date + ' • ' + activeEvent().time" [basePrice]="basePrice()" [parking]="parkingPrice()" [total]="total()" [seat]="selectedSeat()" /></section>
       }
 
@@ -79,7 +138,7 @@
 
       @if (view() === 'ticket') { @if (currentBooking(); as booking) { <section class="ticket-card"><span>✦ Eventora</span><h1>{{ booking.eventName }}</h1><p>{{ booking.bookingNumber }}</p><dl><div><dt>Date</dt><dd>{{ bookingStart(booking) | date:'dd MMMM, h:mm a' }}</dd></div><div><dt>Seat</dt><dd>{{ booking.seats.join(', ') || 'General' }}</dd></div><div><dt>Parking</dt><dd>{{ booking.parkingSlot || 'Not selected' }}</dd></div></dl>@if (currentQr(); as qr) { <app-qr-visual [value]="qr.token" [label]="booking.eventName + ' entry QR code'" /><small>Scan at the entrance. Token: {{ qr.token }}</small> } @else { <div class="empty-panel"><h3>QR unavailable</h3><p>A QR is generated only for an eligible paid booking.</p></div> }<div class="action-row"><button type="button" (click)="download('Ticket')">Download</button><button type="button" (click)="shareTicket()">Share</button></div></section> } }
 
-      @if (view() === 'my-parking') { <section class="page-title"><div><span>MY PARKING</span><h1>Parking Reservations</h1><p>Your event arrival details in one place.</p></div></section><section class="parking-wallet">@for (booking of customerBookings(); track booking.id) { @if (booking.parkingSlot && booking.status !== 'Cancelled') { <article class="parking-pass"><div class="parking-icon"><app-icon name="car-01" /></div><span><small>EVENT</small><b>{{ booking.eventName }}</b><em>{{ bookingStart(booking) | date:'dd MMM • h:mm a' }}</em></span><span><small>PARKING SLOT</small><strong>{{ booking.parkingSlot }}</strong><em>{{ bookingVenue(booking) }}</em></span><a target="_blank" rel="noopener" [href]="'https://www.google.com/maps/search/?api=1&query=' + bookingVenue(booking)">Open Map ↗</a></article> } } @if (!hasParkingReservations()) { <div class="content-card empty-panel"><h3>No parking reservations</h3><p>Select a parking slot during booking to see it here.</p></div> }</section> }
+      @if (view() === 'my-parking') { <section class="page-title"><div><span>MY PARKING</span><h1>Parking Reservations</h1><p>Your real event arrival details in one place.</p></div></section><section class="parking-wallet">@for (booking of customerBookings(); track booking.id) { @if (booking.parkingSlot && booking.status !== 'Cancelled') { <article class="parking-pass"><div class="parking-icon"><app-icon name="car-01" /></div><span><small>EVENT</small><b>{{ booking.eventName }}</b><em>{{ bookingStart(booking) | date:'dd MMM • h:mm a' }} • {{ bookingVenue(booking) }}</em></span><span><small>{{ booking.parkingArea || zoneLabel(booking.parkingSlot) }}</small><strong>{{ booking.parkingSlot }}</strong><em>{{ booking.parkingType || 'Standard' }} • LKR {{ (booking.parkingFee || 0) | number }} • {{ booking.status }}</em></span><a target="_blank" rel="noopener" [href]="'https://www.google.com/maps/search/?api=1&query=' + bookingVenue(booking)">Open Map ↗</a></article> } } @if (!hasParkingReservations()) { <div class="content-card empty-panel"><h3>No parking reservations</h3><p>Select a parking slot during booking to see it here.</p></div> }</section> }
 
       @if (view() === 'payments') { <section class="page-title"><div><span>PAYMENTS</span><h1>Payment History</h1><p>Your own transaction records.</p></div></section><section class="content-card">@for (payment of customerPayments(); track payment.id) { <button class="list-row" type="button" (click)="openReceipt(payment)"><span><b>{{ bookingForPayment(payment)?.eventName || ('Booking #' + payment.bookingId) }}</b><small>{{ payment.transactionReference }} • {{ payment.createdAtUtc | date:'medium' }}</small></span><strong class="status-pill">{{ payment.status }}</strong><em>LKR {{ payment.amount | number }}</em></button> } @empty { <div class="empty-panel"><h3>No payments found</h3><p>Completed and pending payments will appear here.</p></div> }</section> }
 

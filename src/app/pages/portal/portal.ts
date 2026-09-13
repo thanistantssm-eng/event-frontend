@@ -15,6 +15,7 @@ import {
   CustomerProfile,
   EventRecord,
   FavoriteEvent,
+  ParkingLayout,
   ParkingSlot,
   Payment,
   PaymentReceipt,
@@ -107,6 +108,7 @@ export class Portal {
   protected readonly ticketTypes = signal<TicketType[]>([]);
   protected readonly availableSeats = signal<Seat[]>([]);
   protected readonly availableParking = signal<ParkingSlot[]>([]);
+  protected readonly parkingLayout = signal<ParkingLayout | null>(null);
   protected readonly customerBookings = signal<Booking[]>([]);
   protected readonly customerPayments = signal<Payment[]>([]);
   protected readonly apiNotifications = signal<UserNotification[]>([]);
@@ -234,6 +236,28 @@ export class Portal {
       this.availableParking().find((slot) => slot.id === this.selectedParkingId())?.parkingFee ?? 0,
   );
   protected readonly total = computed(() => this.basePrice() + this.parkingPrice());
+  protected readonly selectedParkingSlot = computed(() =>
+    this.availableParking().find((slot) => slot.id === this.selectedParkingId()),
+  );
+  protected readonly selectedParkingArea = computed(() => {
+    const slot = this.selectedParkingSlot();
+    return slot
+      ? this.parkingLayout()?.allocations.find(
+          (allocation) => allocation.parkingAreaId === slot.parkingAreaId,
+        )
+      : undefined;
+  });
+  protected readonly parkingZones = computed(() => {
+    const layout = this.parkingLayout();
+    if (!layout) return [];
+    return layout.allocations.map((allocation) => ({
+      ...allocation,
+      zone: this.zoneLabel(
+        layout.slots.find((slot) => slot.parkingAreaId === allocation.parkingAreaId)?.slotNumber,
+      ),
+      slots: layout.slots.filter((slot) => slot.parkingAreaId === allocation.parkingAreaId),
+    }));
+  });
 
   protected readonly seatRows = computed(() => {
     const groups = new Map<string, Seat[]>();
@@ -356,6 +380,7 @@ export class Portal {
     this.persistBookingDraft();
   }
   protected chooseParking(slot: ParkingSlot): void {
+    if (!slot.isActive || slot.status !== 'Available') return;
     const selected = this.selectedParkingId() === slot.id;
     this.selectedParking.set(selected ? '' : slot.slotNumber);
     this.selectedParkingId.set(selected ? null : slot.id);
@@ -419,7 +444,14 @@ export class Portal {
         },
         error: (error) => {
           this.loading.set(false);
-          this.flash(apiErrorMessage(error));
+          if ((error as { status?: number })?.status === 409) {
+            this.clearParking();
+            this.loadEventBundle(eventId);
+            this.go(`/customer/booking/parking/${eventId}`);
+            this.flash('That parking slot was just reserved. Availability has been refreshed.');
+          } else {
+            this.flash(apiErrorMessage(error));
+          }
         },
       });
   }
@@ -732,12 +764,13 @@ export class Portal {
     forkJoin({
       tickets: this.api.tickets(eventId),
       seats: this.api.seats(eventId),
-      parking: this.api.eventParkingSlots(eventId),
+      parking: this.api.eventParkingLayout(eventId),
     }).subscribe({
       next: ({ tickets, seats, parking }) => {
         this.ticketTypes.set(tickets.filter((item) => item.isActive));
         this.availableSeats.set(seats.filter((item) => item.isActive));
-        this.availableParking.set(parking.filter((item) => item.isActive));
+        this.parkingLayout.set(parking);
+        this.availableParking.set(parking.slots.filter((item) => item.isActive));
         const activeTickets = tickets.filter((item) => item.isActive);
         const selectedTicket = activeTickets.find(
           (ticket) => ticket.id === this.selectedTicketId(),
@@ -755,7 +788,7 @@ export class Portal {
         );
         this.selectedSeatId.set(selectedSeat?.id ?? null);
         this.selectedSeat.set(selectedSeat?.seatNumber ?? '');
-        const selectedParking = parking.find(
+        const selectedParking = parking.slots.find(
           (slot) =>
             slot.id === this.selectedParkingId() && slot.isActive && slot.status === 'Available',
         );
@@ -841,5 +874,10 @@ export class Portal {
       this.events.find((event) => event.backendId === booking.eventId)?.startAt ||
       booking.createdAtUtc;
     return new Date(value);
+  }
+
+  protected zoneLabel(slotNumber?: string): string {
+    const zone = slotNumber?.match(/^[A-Za-z]+/)?.[0]?.toUpperCase();
+    return zone ? `Zone ${zone}` : 'Parking Zone';
   }
 }
