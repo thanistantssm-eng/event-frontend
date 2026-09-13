@@ -188,7 +188,9 @@
   .side-nav{width:280px;transform:translateX(-105%);transition:transform .25s ease}.side-nav.open{transform:translateX(0)}
   .nav-scrim{position:fixed;inset:0;z-index:55;display:block;border:0;background:rgba(16,24,40,.5);backdrop-filter:blur(3px)}
   .portal-main{margin-left:0}.portal-top{height:70px;padding:0 22px}.mobile-menu{width:42px;height:42px;margin:0;display:grid;place-items:center;border:1px solid #e4e7ec;border-radius:12px;color:#344054;background:#fff}.profile-menu{top:59px;right:22px}
-  .portal-content{padding:28px 22px 54px}.page-title{min-height:132px;padding:26px}.booking-layout{grid-template-columns:1fr}
+  .portal-content{padding:28px 22px 108px}.page-title{min-height:132px;padding:26px}.booking-layout{grid-template-columns:1fr}
+  .mobile-bottom-nav{position:fixed;left:50%;bottom:14px;z-index:50;width:min(560px,calc(100% - 28px));height:72px;padding:7px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border:1px solid rgba(228,231,236,.9);border-radius:20px;background:rgba(255,255,255,.95);box-shadow:0 18px 55px rgba(16,24,40,.2);backdrop-filter:blur(18px);transform:translateX(-50%)}
+  .mobile-bottom-nav a{min-width:0;display:grid;place-items:center;align-content:center;gap:4px;border-radius:13px;color:#667085;text-decoration:none;font-size:10px;font-weight:700}.mobile-bottom-nav a app-icon{color:#667085}.mobile-bottom-nav a.active{color:#4f46e5;background:#eef1ff}.mobile-bottom-nav a.active app-icon{color:#5b5ce2}
 }
 @media(max-width:640px){
   .portal-top{height:64px;padding:0 14px;gap:9px}.top-heading small{display:none}.top-heading b{max-width:140px;overflow:hidden;font-size:14px;text-overflow:ellipsis;white-space:nowrap}.top-icon{width:40px;height:40px}
@@ -196,8 +198,8 @@
   .portal-content{padding:20px 14px 104px}.page-title{min-height:0;padding:22px 20px;gap:18px;border-radius:18px;background:linear-gradient(110deg,#fff,rgba(255,255,255,.88)),url('/assets/eventora-ui/arena-front.png') center/cover}.page-title h1{font-size:28px}.page-title>.primary-btn{width:100%}
   .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat-grid article{min-height:112px;padding:16px}.content-card{padding:17px;border-radius:17px}
   .filter-bar{grid-template-columns:1fr;padding:11px}.event-grid{grid-template-columns:1fr}.event-card .event-photo{height:220px}
-  .mobile-bottom-nav{position:fixed;left:10px;right:10px;bottom:10px;z-index:50;height:72px;padding:7px;display:grid;grid-template-columns:repeat(5,1fr);gap:3px;border:1px solid rgba(228,231,236,.9);border-radius:20px;background:rgba(255,255,255,.94);box-shadow:0 18px 55px rgba(16,24,40,.2);backdrop-filter:blur(18px)}
+  .mobile-bottom-nav{bottom:10px;width:calc(100% - 20px);gap:3px}
   .mobile-bottom-nav a{min-width:0;display:grid;place-items:center;align-content:center;gap:4px;border-radius:13px;color:#667085;text-decoration:none;font-size:9px;font-weight:700}.mobile-bottom-nav a app-icon{color:#667085}.mobile-bottom-nav a.active{color:#4f46e5;background:#eef1ff}.mobile-bottom-nav a.active app-icon{color:#5b5ce2}
   .list-row,.choice-row{align-items:flex-start;flex-wrap:wrap}.seat-map{grid-template-columns:repeat(5,minmax(42px,1fr))}
 }
-@media(max-width:390px){.top-heading{display:none}.stat-grid{grid-template-columns:1fr}.mobile-bottom-nav{left:7px;right:7px;bottom:7px}}
+@media(max-width:390px){.top-heading{display:none}.stat-grid{grid-template-columns:1fr}.mobile-bottom-nav{bottom:7px;width:calc(100% - 14px)}}
