@@ -1049,8 +1049,11 @@
             <div class="empty-state"><h3>No parking areas</h3></div>
           }
         </section>
-        @if (selectedParkingAreaId()) {
-          <section class="data-card">
+          @if (selectedParkingAreaId()) {
+            <section
+              id="parking-slot-manager"
+              class="data-card"
+            >
             <div class="section-heading"><div><span>BULK GENERATOR</span><h2>Generate Parking Zones</h2></div><small>Duplicate and capacity checks run in the backend.</small></div>
             <form class="form-grid" (ngSubmit)="bulkCreateParkingSlots()">
               <label>Starting Zone<input name="parkingStartZone" maxlength="1" [(ngModel)]="bulkParkingForm.startingZone" /></label>
