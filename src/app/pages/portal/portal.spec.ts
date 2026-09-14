@@ -1,16 +1,37 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { Portal } from './portal';
 
 describe('Portal navigation', () => {
+  const publishedEvent = {
+    id: 10,
+    name: 'Published Test Event',
+    description: 'Full backend event description',
+    eventType: 'NonSeatBased',
+    organizerId: 2,
+    venueId: 4,
+    venueMode: 'OurProperty',
+    eventCategoryId: 7,
+    eventCategoryName: 'Concert',
+    startDateTime: '2099-06-01T18:00:00.000Z',
+    endDateTime: '2099-06-01T21:00:00.000Z',
+    ticketPrice: 2500,
+    status: 'Published',
+    posterUrl: 'https://example.test/poster.jpg',
+    createdAt: '2099-01-01T00:00:00.000Z',
+    updatedAt: '2099-01-01T00:00:00.000Z',
+  };
+  const draftEvent = { ...publishedEvent, id: 11, name: 'Hidden Draft', status: 'Draft' };
+
   beforeEach(async () => {
     const api = {
-      events: () => of([]),
-      venues: () => of([]),
+      events: () => of([publishedEvent, draftEvent]),
+      event: () => of(publishedEvent),
+      venues: () => of([{ id: 4, propertyId: 1, name: 'Test Arena', capacity: 500, isActive: true }]),
       customerProfile: () => throwError(() => new Error('Preview without API session')),
       customerDashboard: () => of(null),
       favorites: () => of([]),
@@ -83,5 +104,41 @@ describe('Portal navigation', () => {
     expect(element.querySelector('.no-parking-choice')?.textContent).toContain('No Parking');
     expect(slots[2].disabled).toBe(true);
     expect(slots[2].textContent).toContain('Booked');
+  });
+
+  it('opens the clicked published event with its backend id and hides drafts', () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as { syncView(url: string): void };
+    component.syncView('/customer/events');
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const cards = element.querySelectorAll<HTMLElement>('.event-card');
+    expect(cards.length).toBe(1);
+    expect(cards[0].textContent).toContain('Published Test Event');
+    expect(element.textContent).not.toContain('Hidden Draft');
+
+    cards[0].click();
+    expect(navigate).toHaveBeenCalledWith('/customer/events/10');
+  });
+
+  it('loads a direct event-details route from GET events by id', () => {
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as {
+      syncView(url: string): void;
+      loadRouteData(url: string): void;
+    };
+    component.syncView('/customer/events/10');
+    component.loadRouteData('/customer/events/10');
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Published Test Event');
+    expect(text).toContain('Full backend event description');
+    expect(text).toContain('Test Arena');
+    expect(text).toContain('General');
+    expect(text).toContain('A01');
   });
 });

@@ -408,8 +408,19 @@ export class Management {
           this.approvals.update((items) =>
             items.map((item) => (item.id === approval.id ? approval : item)),
           );
-          this.flash(`${this.selectedName()} ${approval.status.toLowerCase()} successfully`);
+          const eventStatus = approval.status === 'Approved' ? 'Approved' : 'Rejected';
+          this.visibleEventRecords = this.visibleEventRecords.map((event) =>
+            event.id === approval.eventId ? { ...event, status: eventStatus } : event,
+          );
+          this.refreshEventRows();
           this.showModal.set(false);
+          if (approval.status === 'Approved') {
+            this.flash(`${this.selectedName()} approved. Review the event and publish it.`);
+            this.go(`/admin/events/${approval.eventId}`);
+          } else {
+            this.flash(`${this.selectedName()} rejected successfully`);
+          }
+          this.loadData();
         },
         error: (error) => this.flash(apiErrorMessage(error)),
       });

@@ -85,6 +85,7 @@ export class Portal {
   protected readonly toast = signal('');
   protected readonly loading = signal(false);
   protected readonly apiError = signal('');
+  protected readonly eventDetailLoading = signal(false);
   protected readonly view = signal('dashboard');
   protected readonly activeEventId = signal('');
   protected readonly detailTab = signal<'about' | 'venue' | 'gallery'>('about');
@@ -150,9 +151,9 @@ export class Portal {
   protected readonly activeEvent = computed(
     () =>
       this.events.find((event) => event.id === this.activeEventId()) ??
-      this.events[0] ??
       emptyEvent,
   );
+  protected readonly activeEventAvailable = computed(() => this.activeEvent().backendId > 0);
   protected readonly eventCategories = computed(() => [
     ...new Set(this.events.map((event) => event.category)),
   ]);
@@ -359,6 +360,9 @@ export class Portal {
       '/app/notifications': '/customer/notifications',
     };
     void this.router.navigateByUrl(legacyRoutes[path] ?? path);
+  }
+  protected openEvent(event: EventItem): void {
+    this.go(`/customer/events/${event.backendId}`);
   }
   protected signOut(): void {
     this.auth.signOut();
@@ -681,8 +685,11 @@ export class Portal {
       venues: this.api.venues(),
     }).subscribe({
       next: ({ events, venues }) => {
-        this.eventRows.set(events.map((event, index) => this.toEventItem(event, venues, index)));
-        if (!this.events.some((event) => event.id === this.activeEventId()) && this.events[0]) {
+        const publishedEvents = events.filter((event) => event.status === 'Published');
+        this.eventRows.set(
+          publishedEvents.map((event, index) => this.toEventItem(event, venues, index)),
+        );
+        if (!this.activeEventId() && this.events[0]) {
           this.activeEventId.set(this.events[0].id);
         }
       },
@@ -724,6 +731,7 @@ export class Portal {
     const last = Number(clean.split('/').at(-1));
     if (
       Number.isFinite(last) &&
+      last > 0 &&
       (clean.startsWith('customer/events/') || clean.startsWith('customer/booking/')) &&
       !clean.includes('/success/') &&
       !clean.includes('/ticket/')
@@ -761,12 +769,24 @@ export class Portal {
       this.selectedSeat.set('');
       this.selectedParking.set('');
     }
+    this.eventDetailLoading.set(true);
+    this.apiError.set('');
     forkJoin({
+      event: this.api.event(eventId),
+      venues: this.api.venues(),
       tickets: this.api.tickets(eventId),
       seats: this.api.seats(eventId),
       parking: this.api.eventParkingLayout(eventId),
     }).subscribe({
-      next: ({ tickets, seats, parking }) => {
+      next: ({ event, venues, tickets, seats, parking }) => {
+        this.eventDetailLoading.set(false);
+        const mapped = this.toEventItem(event, venues, 0);
+        this.eventRows.update((items) => {
+          const existingIndex = items.findIndex((item) => item.backendId === event.id);
+          return existingIndex >= 0
+            ? items.map((item, index) => (index === existingIndex ? mapped : item))
+            : [mapped, ...items];
+        });
         this.ticketTypes.set(tickets.filter((item) => item.isActive));
         this.availableSeats.set(seats.filter((item) => item.isActive));
         this.parkingLayout.set(parking);
@@ -796,7 +816,10 @@ export class Portal {
         this.selectedParking.set(selectedParking?.slotNumber ?? '');
         this.persistBookingDraft();
       },
-      error: (error) => this.apiError.set(apiErrorMessage(error)),
+      error: (error) => {
+        this.eventDetailLoading.set(false);
+        this.apiError.set(apiErrorMessage(error));
+      },
     });
   }
 
