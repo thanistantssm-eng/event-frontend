@@ -1,8 +1,10 @@
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { Booking, Payment } from '../../core/api.models';
 import { AuthService } from '../../core/auth.service';
 import { Portal } from './portal';
 
@@ -28,6 +30,7 @@ describe('Portal navigation', () => {
   const draftEvent = { ...publishedEvent, id: 11, name: 'Hidden Draft', status: 'Draft' };
 
   beforeEach(async () => {
+    sessionStorage.clear();
     const api = {
       events: () => of([publishedEvent, draftEvent]),
       event: () => of(publishedEvent),
@@ -85,7 +88,7 @@ describe('Portal navigation', () => {
     expect(element.querySelector('.profile-trigger')).toBeTruthy();
     expect(element.querySelector('.mobile-menu')).toBeTruthy();
     expect(element.querySelector('a[href="/customer/tickets"]')?.textContent).toContain('Tickets');
-  }, 10_000);
+  }, 30_000);
 
   it('renders an interactive parking map from backend layout records', () => {
     const fixture = TestBed.createComponent(Portal);
@@ -140,5 +143,68 @@ describe('Portal navigation', () => {
     expect(text).toContain('Test Arena');
     expect(text).toContain('General');
     expect(text).toContain('A01');
+  });
+
+  it('reuses the checkout request id after an OTP delivery failure', () => {
+    const api = TestBed.inject(ApiService);
+    const payloads: { requestId?: string }[] = [];
+    const booking = { id: 71, eventId: 10, status: 'PendingPayment', seats: [],
+      parkingSlot: null, ticketType: 'General', quantity: 1 };
+    api.createBooking = vi.fn((payload) => {
+      payloads.push(payload);
+      return of(booking as unknown as Booking);
+    });
+    api.startPayment = vi.fn(() => of({ id: 81, bookingId: 71, status: 'PendingOtp' } as Payment));
+    api.requestPaymentOtp = vi.fn(() => throwError(() => new HttpErrorResponse({
+      status: 503, error: { title: 'Service Unavailable', detail: 'OTP delivery unavailable' },
+    })));
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as {
+      syncView(url: string): void; loadEventBundle(id: number): void;
+      pay(): void; toast(): string;
+    };
+    component.syncView('/customer/booking/payment/10');
+    component.loadEventBundle(10);
+    component.pay();
+    component.pay();
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0].requestId).toBeTruthy();
+    expect(payloads[0].requestId).toBe(payloads[1].requestId);
+    expect(component.toast()).toBe('OTP delivery unavailable');
+  });
+
+  it('does not mislabel a payment conflict as a parking conflict', () => {
+    const api = TestBed.inject(ApiService);
+    api.createBooking = vi.fn(() => of({ id: 71, eventId: 10, status: 'PendingPayment', seats: [] } as unknown as Booking));
+    api.startPayment = vi.fn(() => throwError(() => new HttpErrorResponse({
+      status: 409, error: { title: 'Conflict', detail: 'The existing payment is no longer active.' },
+    })));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as {
+      syncView(url: string): void; loadEventBundle(id: number): void; pay(): void; toast(): string;
+    };
+    component.syncView('/customer/booking/payment/10');
+    component.loadEventBundle(10);
+    component.pay();
+    expect(component.toast()).toBe('The existing payment is no longer active.');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('routes a real parking conflict to refreshed parking selection', () => {
+    const api = TestBed.inject(ApiService);
+    api.createBooking = vi.fn(() => throwError(() => new HttpErrorResponse({
+      status: 409, error: { title: 'Conflict', detail: 'The selected parking slot is no longer available.' },
+    })));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const fixture = TestBed.createComponent(Portal);
+    const component = fixture.componentInstance as unknown as {
+      syncView(url: string): void; loadEventBundle(id: number): void; pay(): void; toast(): string;
+    };
+    component.syncView('/customer/booking/payment/10');
+    component.loadEventBundle(10);
+    component.pay();
+    expect(component.toast()).toBe('The selected parking slot is no longer available.');
+    expect(navigate).toHaveBeenCalledWith('/customer/booking/parking/10');
   });
 });

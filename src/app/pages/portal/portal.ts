@@ -5,7 +5,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { MatRippleModule } from '@angular/material/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { filter, forkJoin, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, filter, forkJoin, of, switchMap } from 'rxjs';
 import { OrderSummary, Stepper } from './ui-parts';
 import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -50,6 +50,9 @@ type EventItem = {
 
 type BookingDraft = {
   eventId: number;
+  requestId?: string | null;
+  fingerprint?: string | null;
+  bookingId?: number | null;
   ticketId: number | null;
   seatId: number | null;
   parkingId: number | null;
@@ -129,7 +132,11 @@ export class Portal {
   protected readonly awaitingPaymentOtp = signal(false);
 
   private readonly eventRows = signal<EventItem[]>([]);
-  private readonly bookingDraftKey = 'eventora-booking-draft';
+  private checkoutRequestId: string | null = null;
+  private checkoutFingerprint: string | null = null;
+  private get bookingDraftKey(): string {
+    return `eventora-booking-draft-${this.auth.session()?.userId ?? 'anonymous'}`;
+  }
   private loadedBundleEventId: number | null = null;
   protected get events(): EventItem[] {
     return this.eventRows();
@@ -420,9 +427,18 @@ export class Portal {
     }
     this.loading.set(true);
     const method = this.selectedPayment();
+    const fingerprint = JSON.stringify([
+      eventId, ticket.id, this.selectedSeatId(), this.selectedParkingId(), 1,
+    ]);
+    if (!this.checkoutRequestId || this.checkoutFingerprint !== fingerprint) {
+      this.checkoutRequestId = crypto.randomUUID();
+      this.checkoutFingerprint = fingerprint;
+    }
+    this.persistBookingDraft();
     this.api
       .createBooking({
         eventId,
+        requestId: this.checkoutRequestId,
         seatIds: this.selectedSeatId() ? [this.selectedSeatId()!] : [],
         parkingSlotId: this.selectedParkingId(),
         ticketType: ticket.name,
@@ -431,10 +447,23 @@ export class Portal {
       .pipe(
         switchMap((booking) => {
           this.currentBooking.set(booking);
+          this.persistBookingDraft();
+          if (booking.status === 'Confirmed') {
+            this.loading.set(false);
+            this.clearBookingDraft();
+            this.go(`/customer/booking/success/${booking.id}`);
+            return EMPTY;
+          }
           return this.api.startPayment(booking.id, method);
         }),
         switchMap((payment) => {
           this.currentPayment.set(payment);
+          if (payment.status === 'Completed') {
+            this.loading.set(false);
+            this.clearBookingDraft();
+            this.go(`/customer/booking/success/${payment.bookingId}`);
+            return EMPTY;
+          }
           return this.api.requestPaymentOtp(payment.id);
         }),
       )
@@ -450,13 +479,35 @@ export class Portal {
         },
         error: (error) => {
           this.loading.set(false);
-          if ((error as { status?: number })?.status === 409) {
+          const message = apiErrorMessage(error);
+          if (
+            (error as { status?: number })?.status === 409 &&
+            /parking slot/i.test(message)
+          ) {
             this.clearParking();
             this.loadEventBundle(eventId);
             this.go(`/customer/booking/parking/${eventId}`);
-            this.flash('That parking slot was just reserved. Availability has been refreshed.');
+            this.flash(message);
+          } else if (
+            (error as { status?: number })?.status === 409 &&
+            /seat/i.test(message)
+          ) {
+            this.selectedSeat.set('');
+            this.selectedSeatId.set(null);
+            this.persistBookingDraft();
+            this.loadEventBundle(eventId);
+            this.go(`/customer/booking/seats/${eventId}`);
+            this.flash(message);
           } else {
-            this.flash(apiErrorMessage(error));
+            if (/checkout has expired|checkout identifier/i.test(message)) {
+              this.checkoutRequestId = null;
+              this.checkoutFingerprint = null;
+              this.currentBooking.set(null);
+              this.currentPayment.set(null);
+              this.awaitingPaymentOtp.set(false);
+              this.persistBookingDraft();
+            }
+            this.flash(message);
           }
         },
       });
@@ -763,6 +814,8 @@ export class Portal {
     if (this.loadedBundleEventId !== eventId) {
       this.loadedBundleEventId = eventId;
       const draft = this.readBookingDraft(eventId);
+      this.checkoutRequestId = draft?.requestId ?? null;
+      this.checkoutFingerprint = draft?.fingerprint ?? null;
       this.selectedTicketId.set(draft?.ticketId ?? null);
       this.selectedSeatId.set(draft?.seatId ?? null);
       this.selectedParkingId.set(draft?.parkingId ?? null);
@@ -779,8 +832,12 @@ export class Portal {
       tickets: this.api.tickets(eventId),
       seats: this.api.seats(eventId),
       parking: this.api.eventParkingLayout(eventId),
+      booking: this.readBookingDraft(eventId)?.bookingId
+        ? this.api.booking(this.readBookingDraft(eventId)!.bookingId!).pipe(catchError(() => of(null)))
+        : of(null),
     }).subscribe({
-      next: ({ event, venues, tickets, seats, parking }) => {
+      next: ({ event, venues, tickets, seats, parking, booking }) => {
+        if (booking?.eventId === eventId) this.currentBooking.set(booking);
         this.eventDetailLoading.set(false);
         const mapped = this.toEventItem(event, venues, 0);
         this.eventRows.update((items) => {
@@ -806,13 +863,23 @@ export class Portal {
         }
         const selectedSeat = seats.find(
           (seat) =>
-            seat.id === this.selectedSeatId() && seat.isActive && seat.status === 'Available',
+            seat.id === this.selectedSeatId() && seat.isActive &&
+            (seat.status === 'Available' ||
+              (this.currentBooking()?.eventId === eventId &&
+                this.currentBooking()?.status === 'PendingPayment' &&
+                this.currentBooking()?.seats.includes(seat.seatNumber))),
         );
         this.selectedSeatId.set(selectedSeat?.id ?? null);
         this.selectedSeat.set(selectedSeat?.seatNumber ?? '');
         const selectedParking = parking.slots.find(
           (slot) =>
-            slot.id === this.selectedParkingId() && slot.isActive && slot.status === 'Available',
+            slot.id === this.selectedParkingId() && slot.isActive &&
+            (slot.status === 'Available' ||
+              (this.currentBooking()?.eventId === eventId &&
+                this.currentBooking()?.status === 'PendingPayment' &&
+                this.currentBooking()?.parkingSlot === slot.slotNumber &&
+                this.currentBooking()?.parkingArea === parking.allocations.find(
+                  (area) => area.parkingAreaId === slot.parkingAreaId)?.parkingAreaName)),
         );
         this.selectedParkingId.set(selectedParking?.id ?? null);
         this.selectedParking.set(selectedParking?.slotNumber ?? '');
@@ -833,6 +900,9 @@ export class Portal {
       return draft.eventId === eventId
         ? {
             eventId,
+            requestId: typeof draft.requestId === 'string' ? draft.requestId : null,
+            fingerprint: typeof draft.fingerprint === 'string' ? draft.fingerprint : null,
+            bookingId: typeof draft.bookingId === 'number' ? draft.bookingId : null,
             ticketId: typeof draft.ticketId === 'number' ? draft.ticketId : null,
             seatId: typeof draft.seatId === 'number' ? draft.seatId : null,
             parkingId: typeof draft.parkingId === 'number' ? draft.parkingId : null,
@@ -850,6 +920,9 @@ export class Portal {
     if (!Number.isFinite(eventId) || eventId <= 0) return;
     const draft: BookingDraft = {
       eventId,
+      requestId: this.checkoutRequestId,
+      fingerprint: this.checkoutFingerprint,
+      bookingId: this.currentBooking()?.eventId === eventId ? this.currentBooking()?.id : null,
       ticketId: this.selectedTicketId(),
       seatId: this.selectedSeatId(),
       parkingId: this.selectedParkingId(),
@@ -860,6 +933,8 @@ export class Portal {
 
   private clearBookingDraft(): void {
     sessionStorage.removeItem(this.bookingDraftKey);
+    this.checkoutRequestId = null;
+    this.checkoutFingerprint = null;
   }
 
   private toEventItem(event: EventRecord, venues: Venue[], index: number): EventItem {

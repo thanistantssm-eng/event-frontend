@@ -263,6 +263,7 @@ export class ApiService {
 
   createBooking(payload: {
     eventId: number;
+    requestId?: string;
     seatIds: number[];
     parkingSlotId?: number | null;
     ticketType: string;
@@ -370,8 +371,9 @@ export class ApiService {
 export function apiErrorMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) return 'Something went wrong. Please try again.';
   if (error.status === 0) return 'Cannot reach the API. Please check your internet connection or backend service.';
-  const body = error.error as { message?: string; title?: string; errors?: Record<string, string[]> } | string;
+  const body = error.error as { detail?: string; message?: string; title?: string; errors?: Record<string, string[]> } | string;
   if (typeof body === 'string') return body || `Request failed (${error.status}).`;
+  if (body?.detail) return body.detail;
   if (body?.message) return body.message;
   if (body?.errors) return Object.values(body.errors).flat()[0] ?? 'Please check the entered details.';
   return body?.title ?? `Request failed (${error.status}).`;
