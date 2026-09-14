@@ -1,7 +1,7 @@
 <header class="hero" id="home">
   <nav class="nav shell" aria-label="Main navigation">
     <a class="brand" href="#home" aria-label="Eventora home">
-      <span class="brand-mark">✦</span>
+      <app-brand-logo class="brand-mark" />
       <span><strong>Eventora</strong><small>Events • Tickets • Parking</small></span>
     </a>
     <button matRipple class="menu-toggle" type="button" (click)="menuOpen.set(!menuOpen())" aria-label="Toggle navigation"><app-icon name="menu-01" /></button>
@@ -20,7 +20,7 @@
         <a matRipple class="user-chip" [routerLink]="auth.landingRoute()" aria-label="Open my account"><span>{{ (auth.session()?.username || 'U').charAt(0) }}</span><b>{{ auth.session()?.username }}</b></a>
       } @else {
         <a matRipple class="btn btn-white" routerLink="/login">Log In</a>
-        <a matRipple class="btn btn-primary ev-interactive" routerLink="/register">Create Account</a>
+        <a appButton variant="primary" matRipple class="btn btn-primary ev-interactive" routerLink="/register">Create Account</a>
       }
     </div>
   </nav>
@@ -31,7 +31,7 @@
       <h1>Book the Event.<br />Reserve Your Seat.<br /><em>Park Without Stress.</em></h1>
       <p>Discover published events, choose available tickets and parking, and manage everything from one secure account.</p>
       <div class="hero-buttons">
-        <a matRipple class="btn btn-primary btn-large ev-interactive" routerLink="/events">Explore Events <app-icon name="arrow-right" /></a>
+        <a appButton variant="primary" matRipple class="btn btn-primary btn-large ev-interactive" routerLink="/events">Explore Events <app-icon name="arrow-right" /></a>
         <a matRipple class="btn btn-outline btn-large" href="#how">How It Works</a>
       </div>
       <div class="trust-row"><span><app-icon name="shield-tick" /> Secure Booking</span><span><i [class.online]="apiOnline()"></i> {{ apiOnline() ? 'API connected' : 'Live Availability' }}</span><span><app-icon name="car-01" /> Optional Parking</span></div>
@@ -52,7 +52,7 @@
         <div class="preview-card"><span class="preview-icon violet">◇</span><div><small>Published events</small><strong>Nothing scheduled yet</strong><span>New events will appear after admin publication.</span></div></div>
       }
     </div>
-    <div class="ticket-phone" aria-label="Digital ticket illustration"><small>✦ Eventora</small><div class="qr-pattern"></div><strong>Digital Ticket</strong><span>QR available after payment</span></div>
+    <div class="ticket-phone" aria-label="Digital ticket illustration"><small>Eventora</small><div class="qr-pattern"></div><strong>Digital Ticket</strong><span>QR available after payment</span></div>
   </section>
 </header>
 
@@ -62,7 +62,7 @@
       <label class="search-field"><span><app-icon name="search-lg" /></span><input [value]="query()" (input)="updateQuery($event)" placeholder="Search published events or venues..." /></label>
       <label class="select-field"><span><app-icon name="marker-pin-01" /></span><small>Location / Venue</small><select [value]="selectedVenue()" (change)="updateVenue($event)"><option>All Locations</option>@for (venue of venues(); track venue) { <option>{{ venue }}</option> }</select></label>
       <label class="select-field"><span><app-icon name="ticket-01" /></span><small>Category</small><select [value]="selectedCategory()" (change)="updateCategory($event)">@for (category of categories(); track category) { <option>{{ category }}</option> }</select></label>
-      <button matRipple class="btn btn-primary find-btn ev-interactive" type="button" (click)="findEvents()">Find Events <app-icon name="arrow-right" /></button>
+      <button appButton variant="primary" matRipple class="btn btn-primary find-btn ev-interactive" type="button" (click)="findEvents()">Find Events <app-icon name="arrow-right" /></button>
     </div>
     <div class="category-row"><b>Available Categories:</b> @for (category of categories().slice(1); track category) { <button type="button" (click)="chooseCategory(category)">{{ category }}</button> } @empty { <span>Categories will appear with published events.</span> }</div>
   </section>
@@ -118,4 +118,4 @@
   <section class="final-cta shell"><div><h2>Your Next Event Starts Here.</h2><p>Real availability, secure booking and optional parking.</p><a class="btn btn-white" routerLink="/events">Explore Events →</a><a class="btn btn-outline" routerLink="/register">Create Account</a></div><span>Live Events.<br />Better Together.</span></section>
 </main>
 
-<footer id="footer"><div class="footer-grid shell"><div><a class="brand" href="#home"><span class="brand-mark">✦</span><span><strong>Eventora</strong><small>Events • Tickets • Parking</small></span></a><p>Your event and parking reservation platform.</p></div><div><h3>Explore</h3><a routerLink="/events">Events</a><a routerLink="/parking">Parking</a><a routerLink="/how-it-works">How It Works</a></div><div><h3>Account</h3><a routerLink="/login">Login</a><a routerLink="/register">Register</a></div><div><h3>Support</h3><a routerLink="/faq">FAQ</a><a routerLink="/contact">Contact</a></div><div><h3>Company</h3><a routerLink="/about">About</a></div></div><div class="footer-bottom shell"><span>© 2026 Eventora. All rights reserved.</span><span>Events • Tickets • Parking</span></div><a class="back-top" href="#home" aria-label="Back to top">↑</a></footer>
+<footer id="footer"><div class="footer-grid shell"><div><a class="brand" href="#home"><app-brand-logo class="brand-mark" /><span><strong>Eventora</strong><small>Events • Tickets • Parking</small></span></a><p>Your event and parking reservation platform.</p></div><div><h3>Explore</h3><a routerLink="/events">Events</a><a routerLink="/parking">Parking</a><a routerLink="/how-it-works">How It Works</a></div><div><h3>Account</h3><a routerLink="/login">Login</a><a routerLink="/register">Register</a></div><div><h3>Support</h3><a routerLink="/faq">FAQ</a><a routerLink="/contact">Contact</a></div><div><h3>Company</h3><a routerLink="/about">About</a></div></div><div class="footer-bottom shell"><span>© 2026 Eventora. All rights reserved.</span><span>Events • Tickets • Parking</span></div><a class="back-top" href="#home" aria-label="Back to top">↑</a></footer>

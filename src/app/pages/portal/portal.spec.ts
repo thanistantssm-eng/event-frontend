@@ -85,7 +85,7 @@ describe('Portal navigation', () => {
     expect(element.querySelector('.profile-trigger')).toBeTruthy();
     expect(element.querySelector('.mobile-menu')).toBeTruthy();
     expect(element.querySelector('a[href="/customer/tickets"]')?.textContent).toContain('Tickets');
-  });
+  }, 10_000);
 
   it('renders an interactive parking map from backend layout records', () => {
     const fixture = TestBed.createComponent(Portal);

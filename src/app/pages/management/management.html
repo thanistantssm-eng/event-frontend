@@ -8,7 +8,7 @@
     <a
       class="manage-brand"
       [routerLink]="role() === 'admin' ? '/admin/dashboard' : '/organizer/dashboard'"
-      ><span>✦</span>
+      ><app-brand-logo />
       <div>
         <b>Eventora</b
         ><small>{{ role() === 'admin' ? 'Administration' : 'Organizer Portal' }}</small>
@@ -55,6 +55,11 @@
       </button>
     </header>
     <main class="manage-content">
+      @if (showBackNavigation()) {
+        <button appButton variant="ghost" class="workspace-back" type="button" (click)="goBack()">
+          <span aria-hidden="true">←</span> Back
+        </button>
+      }
       @if (apiError()) {
         <div class="notice error">
           <b>Unable to load some data</b><span>{{ apiError() }}</span>

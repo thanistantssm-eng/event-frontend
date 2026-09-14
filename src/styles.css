@@ -2,24 +2,24 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
 
 :root{
-  --ev-blue:#3457f1;
-  --ev-blue-700:#2443ce;
-  --ev-blue-50:#eef1ff;
-  --ev-purple:#7a4df5;
-  --ev-orange:#ff6b35;
-  --ev-navy:#101828;
-  --ev-text:#1d2939;
-  --ev-muted:#667085;
-  --ev-border:#e4e7ec;
+  --ev-blue:#02597B;
+  --ev-blue-700:#0D2D53;
+  --ev-blue-50:#E7F2F1;
+  --ev-purple:#028991;
+  --ev-orange:#028991;
+  --ev-navy:#0D2D53;
+  --ev-text:#18384A;
+  --ev-muted:#58717A;
+  --ev-border:#D4DDD9;
   --ev-surface:#ffffff;
-  --ev-bg:#f8f9fc;
+  --ev-bg:#EDEDE2;
   --ev-green:#12b76a;
   --ev-red:#f04438;
   --ev-radius-sm:12px;
   --ev-radius:18px;
   --ev-radius-lg:28px;
-  --ev-shadow:0 10px 30px rgba(16,24,40,.08);
-  --ev-shadow-lg:0 24px 70px rgba(16,24,40,.15);
+  --ev-shadow:0 10px 30px rgba(13,45,83,.09);
+  --ev-shadow-lg:0 24px 70px rgba(13,45,83,.17);
   --mat-sys-primary:var(--ev-blue);
   --mat-sys-on-primary:#fff;
   --mat-sys-primary-container:var(--ev-blue-50);
@@ -33,7 +33,7 @@ h1,h2,h3,.brand,.portal-brand,.manage-brand,.auth-brand{font-family:'Manrope','D
 button,input,select,textarea{font:inherit}
 button,a{ -webkit-tap-highlight-color:transparent }
 a{color:inherit}
-::selection{background:#cfe5ff;color:#0c3973}
+::selection{background:#bfe3df;color:#0D2D53}
 
 /* Shared scrollbar used by dense admin/organizer tables. */
 *{scrollbar-width:thin;scrollbar-color:#c9d8eb transparent}
@@ -46,16 +46,50 @@ html{font-size:16px}
 body{font-size:15px;line-height:1.55;letter-spacing:-.005em}
 input,select,textarea,button{font-size:14px}
 input::placeholder,textarea::placeholder{color:#93a0b2;opacity:1}
-input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid rgba(8,116,249,.16);outline-offset:2px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid rgba(2,137,145,.24);outline-offset:2px}
 
 /* Uiverse-inspired interaction primitives, implemented locally for Angular. */
 .ev-interactive{position:relative;isolation:isolate;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
 .ev-interactive::after{content:'';position:absolute;z-index:-1;inset:-120% -35%;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.38) 48%,transparent 61%);transform:translateX(-65%) rotate(7deg);transition:transform .65s ease}
-.ev-interactive:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(52,87,241,.2)}
+.ev-interactive:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(2,89,123,.2)}
 .ev-interactive:hover::after{transform:translateX(65%) rotate(7deg)}
-.ev-glow{box-shadow:0 0 0 1px rgba(122,77,245,.08),0 18px 55px rgba(52,87,241,.13)}
+.ev-glow{box-shadow:0 0 0 1px rgba(2,137,145,.10),0 18px 55px rgba(13,45,83,.13)}
 
-.mat-mdc-snack-bar-container .mdc-snackbar__surface{border-radius:14px!important;background:#101828!important;box-shadow:var(--ev-shadow-lg)!important}
+.mat-mdc-snack-bar-container .mdc-snackbar__surface{border-radius:14px!important;background:#0D2D53!important;box-shadow:var(--ev-shadow-lg)!important}
 .mat-mdc-snack-bar-container .mdc-snackbar__label{font-weight:650!important;letter-spacing:0!important}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Shared production button system. Existing feature classes map onto the same
+   sizing, radius and motion tokens while appButton supplies semantic variants. */
+.ui-button,
+.btn,
+.primary,
+.primary-btn,
+.secondary-btn,
+.danger-btn,
+.ghost-btn {
+  min-height:44px;
+  padding:0 17px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:750;
+  line-height:1;
+  text-decoration:none;
+  cursor:pointer;
+  transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease,border-color .2s ease,opacity .2s ease;
+}
+.ui-button:hover,.btn:hover,.primary:hover,.primary-btn:hover,.secondary-btn:hover,.danger-btn:hover,.ghost-btn:hover{transform:translateY(-1px)}
+.ui-button[data-variant='primary'],.btn-primary,.primary,.primary-btn{border:1px solid transparent;color:#fff;background:linear-gradient(135deg,#028991,#02597B 62%,#0D2D53);box-shadow:0 10px 24px rgba(2,89,123,.22)}
+.ui-button[data-variant='secondary'],.secondary-btn,.btn-soft{border:1px solid rgba(2,89,123,.22);color:#02597B;background:#E7F2F1}
+.ui-button[data-variant='ghost'],.ghost-btn,.btn-white,.btn-outline{border:1px solid #CAD8D4;color:#0D2D53;background:#fff}
+.ui-button[data-variant='danger'],.danger-btn{border:1px solid #F0B6B2;color:#B42318;background:#FFF1F0}
+.ui-button:disabled,.ui-button[aria-disabled='true'],.ui-button.is-loading,.primary:disabled,.primary-btn:disabled{pointer-events:none;opacity:.58;box-shadow:none}
+.ui-button.is-loading::before{content:'';width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ui-spin .7s linear infinite}
+@keyframes ui-spin{to{transform:rotate(360deg)}}
+
+app-brand-logo{--brand-logo-size:40px}

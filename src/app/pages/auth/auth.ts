@@ -9,11 +9,13 @@ import { apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { AppRole } from '../../core/api.models';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
+import { BrandLogo } from '../../shared/brand-logo/brand-logo';
+import { AppButton } from '../../shared/app-button/app-button';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [FormsModule, RouterLink, UntitledIcon, MatRippleModule, MatTooltipModule, MatProgressSpinnerModule],
+  imports: [FormsModule, RouterLink, UntitledIcon, BrandLogo, AppButton, MatRippleModule, MatTooltipModule, MatProgressSpinnerModule],
   templateUrl: './auth.html',
   styleUrl: './auth.css',
 })

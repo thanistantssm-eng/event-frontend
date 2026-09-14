@@ -108,3 +108,13 @@ footer{padding:34px 0 20px}.footer-grid{gap:32px}.footer-grid p,.footer-grid a{f
 @media(max-width:950px){.hero-content{grid-template-columns:1fr}.booking-preview{display:none}}
 @media(max-width:950px){.nav-links.open a{color:#344054}.nav-links.open a:hover,.nav-links.open a.active{color:#4f46e5;background:#f2f4ff}}
 @media(max-width:600px){.dashboard-link{display:none}.user-chip{padding:4px;border:0;background:transparent}.user-chip>b{display:none}.user-chip>span{width:38px;height:38px}}
+
+/* Eventora production palette */
+:host{--ink:#0D2D53;--muted:#58717A;--blue:#02597B;--blue2:#0D2D53;--green:#028991;background:#EDEDE2;color:#0D2D53}
+.hero{color:#fff;border-bottom-color:rgba(255,255,255,.12);background:radial-gradient(circle at 75% 18%,rgba(2,137,145,.38),transparent 30%),linear-gradient(135deg,rgba(13,45,83,.98),rgba(2,89,123,.9)),url('/assets/eventora-ui/arena-front.png') 76% 52%/cover no-repeat}
+.brand,.brand small,.nav-links a{color:#fff}.brand app-brand-logo{--brand-logo-size:38px}.nav-links a:hover,.nav-links .active,.hero-copy h1 em,.eyebrow{color:#62DDE0}.nav-links .active:after{background:#028991}
+.btn-primary,.preview-icon,.step-number{background:linear-gradient(135deg,#028991,#02597B 62%,#0D2D53);box-shadow:0 10px 25px rgba(13,45,83,.25)}
+.btn-soft,.step-icon,.event-body small{color:#02597B;border-color:#B8D7D5;background:#E7F2F1}.btn-outline{color:#02597B;border-color:#89BDBC}.search-message,.section-head a,.event-body h3+ p app-icon{color:#028991}
+main,.section,.how,.roles{background:#EDEDE2}.search-wrap,.event-card,.steps article,.parking-feature,.role-grid article,footer{border-color:#D4DDD9;background:#fff}.category-badge{background:rgba(2,89,123,.92)}.date-badge{color:#02597B}.final-cta{background:radial-gradient(circle at 85% 0,rgba(2,137,145,.35),transparent 30%),linear-gradient(135deg,#0D2D53,#02597B)}
+.booking-preview>.preview-card,.booking-preview .preview-pair .preview-card{color:#0D2D53;border-color:rgba(255,255,255,.78)}.booking-preview .preview-card strong{color:#0D2D53}.booking-preview .preview-card small,.booking-preview .preview-card div>span{color:#58717A}.booking-preview>.preview-card>a{color:#028991}.user-chip>span{background:linear-gradient(135deg,#028991,#02597B)}
+@media(max-width:950px){.nav-links.open a{color:#0D2D53}.nav-links.open a:hover,.nav-links.open a.active{color:#02597B;background:#E7F2F1}}

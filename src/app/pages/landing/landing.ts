@@ -8,6 +8,8 @@ import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { UiState } from '../../shared/ui-state/ui-state';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
+import { BrandLogo } from '../../shared/brand-logo/brand-logo';
+import { AppButton } from '../../shared/app-button/app-button';
 
 type LandingEvent = {
   id: number;
@@ -25,7 +27,7 @@ type LandingEvent = {
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [RouterLink, UiState, UntitledIcon, MatRippleModule, MatTooltipModule],
+  imports: [RouterLink, UiState, UntitledIcon, BrandLogo, AppButton, MatRippleModule, MatTooltipModule],
   styleUrl: './landing.css',
   templateUrl: './landing.html',
 })

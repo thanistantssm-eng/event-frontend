@@ -41,21 +41,21 @@ import { UntitledIcon } from '../untitled-icon/untitled-icon';
         align-items: center;
         justify-content: center;
         gap: 12px;
-        color: #667085;
+        color: #58717a;
         font-size: 14px;
         font-weight: 700;
       }
       .skeleton i {
         height: 54px;
         border-radius: 12px;
-        background: linear-gradient(90deg, #f0f2f6 20%, #fafbfc 50%, #f0f2f6 80%);
+        background: linear-gradient(90deg, #e4e8e2 20%, #f7f8f4 50%, #e4e8e2 80%);
         background-size: 200% 100%;
         animation: shimmer 1.25s infinite;
       }
       .state {
         padding: 42px 20px;
         text-align: center;
-        color: #697184;
+        color: #58717a;
       }
       .state > span {
         width: 52px;
@@ -64,8 +64,8 @@ import { UntitledIcon } from '../untitled-icon/untitled-icon';
         display: grid;
         place-items: center;
         border-radius: 15px;
-        background: #f1edff;
-        color: #6b38df;
+        background: #e7f2f1;
+        color: #028991;
         font-size: 22px;
       }
       .state.error > span {
@@ -74,7 +74,7 @@ import { UntitledIcon } from '../untitled-icon/untitled-icon';
       }
       .state h3 {
         margin: 12px 0 5px;
-        color: #252b3d;
+        color: #0d2d53;
       }
       .state p {
         margin: 0 auto 14px;
@@ -85,7 +85,7 @@ import { UntitledIcon } from '../untitled-icon/untitled-icon';
         padding: 9px 14px;
         border: 0;
         border-radius: 10px;
-        background: #3457f1;
+        background: linear-gradient(135deg, #028991, #02597b 58%, #0d2d53);
         color: #fff;
         font-size: 13px;
         font-weight: 800;

@@ -32,6 +32,8 @@ import {
 } from '../../core/api.models';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 import { QrVisual } from '../../shared/qr-visual/qr-visual';
+import { BrandLogo } from '../../shared/brand-logo/brand-logo';
+import { AppButton } from '../../shared/app-button/app-button';
 
 type Role = 'organizer' | 'admin';
 type RowStatus =
@@ -64,7 +66,7 @@ type EventRow = {
 @Component({
   selector: 'app-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, UntitledIcon, QrVisual, MatRippleModule, MatTooltipModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, RouterLink, UntitledIcon, QrVisual, BrandLogo, AppButton, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './management.html',
   styleUrl: './management.css',
 })
@@ -332,6 +334,55 @@ export class Management {
 
   protected go(path: string): void {
     void this.router.navigateByUrl(path);
+  }
+  protected showBackNavigation(): boolean {
+    return ![
+      'dashboard',
+      'my-events',
+      'approvals',
+      'event-bookings',
+      'reports',
+      'notifications',
+      'profile',
+      'settings',
+      'properties',
+      'venues',
+      'organizers',
+      'users',
+      'events',
+      'admin-approvals',
+      'admin-bookings',
+      'admin-payments',
+      'admin-parking',
+      'admin-reports',
+      'categories',
+      'admin-notifications',
+      'admin-settings',
+    ].includes(this.view());
+  }
+  protected goBack(): void {
+    const current = this.view();
+    if (this.role() === 'organizer') {
+      const eventChildViews = ['event-detail', 'event-edit', 'seat-manage', 'pricing-manage', 'parking-manage', 'event-reports', 'poster-qr'];
+      this.go(eventChildViews.includes(current) ? '/organizer/my-events' : '/organizer/dashboard');
+      return;
+    }
+
+    if (['admin-event-detail', 'admin-event-form', 'event-edit', 'seat-manage', 'pricing-manage', 'admin-layout'].includes(current)) {
+      this.go('/admin/events');
+    } else if (current === 'approval-detail') {
+      this.go('/admin/approvals');
+    } else if (current === 'booking-detail') {
+      this.go('/admin/bookings');
+    } else if (current === 'payment-detail') {
+      this.go('/admin/payments');
+    } else if (current === 'organizer-detail') {
+      this.go('/admin/organizers');
+    } else if (['property-detail', 'property-form'].includes(current)) {
+      this.go('/admin/properties');
+    } else {
+      this.go('/admin/dashboard');
+    }
   }
   protected goToNotifications(): void {
     this.go(this.role() === 'admin' ? '/admin/notifications' : '/organizer/notifications');

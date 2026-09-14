@@ -10,6 +10,8 @@ import { ApiService, apiErrorMessage } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { UiState } from '../../shared/ui-state/ui-state';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
+import { BrandLogo } from '../../shared/brand-logo/brand-logo';
+import { AppButton } from '../../shared/app-button/app-button';
 
 type PublicEvent = {
   id: number;
@@ -28,7 +30,7 @@ type PublicEvent = {
 @Component({
   selector: 'app-public-pages',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, UiState, UntitledIcon, MatRippleModule, MatTooltipModule],
+  imports: [CommonModule, FormsModule, RouterLink, UiState, UntitledIcon, BrandLogo, AppButton, MatRippleModule, MatTooltipModule],
   templateUrl: './public-pages.html',
   styleUrl: './public-pages.css',
 })

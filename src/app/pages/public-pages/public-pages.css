@@ -55,3 +55,10 @@
 .public-actions{display:flex;align-items:center;gap:8px}
 .public-user{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;color:#fff;background:linear-gradient(135deg,#7a5af8,#3457f1);box-shadow:0 9px 22px rgba(52,87,241,.22);text-decoration:none;font-size:13px;font-weight:800}
 @media(max-width:560px){.public-actions .ghost{display:none}.public-user{width:40px;height:40px}}
+
+/* Eventora production palette */
+.pub{color:#0D2D53;background:#EDEDE2}.pub-nav{border-color:#D4DDD9;background:rgba(255,255,255,.94)}.pub-brand app-brand-logo{--brand-logo-size:37px}.pub-brand b{color:#0D2D53}.pub-brand small{color:#58717A}.pub-nav nav a{color:#58717A}.pub-nav nav a.active{color:#02597B;border-bottom-color:#028991}
+.public-hero,.simple-hero{background:radial-gradient(circle at 78% 14%,rgba(2,137,145,.38),transparent 28%),linear-gradient(135deg,#0D2D53,#02597B)}.public-hero>div>span,.simple-hero>span{color:#62DDE0}.primary,.public-user{color:#fff;background:linear-gradient(135deg,#028991,#02597B 60%,#0D2D53);box-shadow:0 10px 24px rgba(13,45,83,.22)}.ghost{color:#02597B;border-color:#B8D7D5;background:#fff}
+.floating-search,.public-events>article,.info-card,.booking-card,.journey article,.values article{border-color:#D4DDD9}.section-head>div>span,.public-events small,.ticket-row>span,.contact-grid article>span{color:#028991}.public-events button,.section-head button,.ticket-row strong{color:#02597B}.public-events em,.status{color:#02597B;background:#E7F2F1}
+.parking-public{background:linear-gradient(135deg,#0D2D53,#02597B)} footer{border-color:#D4DDD9;background:#fff}
+@media(max-width:900px){.pub-nav nav a.active{color:#02597B;background:#E7F2F1}}

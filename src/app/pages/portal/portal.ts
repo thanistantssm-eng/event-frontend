@@ -27,6 +27,8 @@ import {
 } from '../../core/api.models';
 import { UntitledIcon } from '../../shared/untitled-icon/untitled-icon';
 import { QrVisual } from '../../shared/qr-visual/qr-visual';
+import { BrandLogo } from '../../shared/brand-logo/brand-logo';
+import { AppButton } from '../../shared/app-button/app-button';
 import QRCode from 'qrcode';
 
 type EventItem = {
@@ -73,7 +75,7 @@ const emptyEvent: EventItem = {
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary, UntitledIcon, QrVisual, MatRippleModule, MatTooltipModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, RouterLink, Stepper, OrderSummary, UntitledIcon, QrVisual, BrandLogo, AppButton, MatRippleModule, MatTooltipModule, MatSnackBarModule],
   templateUrl: './portal.html',
   styleUrl: './portal.css',
   encapsulation: ViewEncapsulation.None,

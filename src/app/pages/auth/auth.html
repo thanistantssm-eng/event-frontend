@@ -1,6 +1,6 @@
 <header class="auth-site-nav">
   <a class="auth-brand" routerLink="/"
-    ><span>✦</span>
+    ><app-brand-logo />
     <div><b>Eventora</b><small>Events • Tickets • Parking</small></div></a
   >
   <nav>
@@ -215,7 +215,7 @@
             I agree to the Terms & Conditions and Privacy Policy</label
           >
         }
-        <button matRipple class="submit ev-interactive" type="submit" [disabled]="loading()">
+        <button appButton variant="primary" [loading]="loading()" matRipple class="submit ev-interactive" type="submit" [disabled]="loading()">
           @if (loading()) { <mat-spinner diameter="18" /> }
           {{
             loading()
@@ -268,7 +268,7 @@
 <footer class="auth-site-footer">
   <div>
     <a class="auth-brand" routerLink="/"
-      ><span>✦</span>
+      ><app-brand-logo />
       <div><b>Eventora</b><small>Events • Tickets • Parking</small></div></a
     >
     <p>Your complete event booking and parking platform.</p>
