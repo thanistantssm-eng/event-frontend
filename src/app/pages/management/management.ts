@@ -1095,15 +1095,40 @@ export class Management {
     });
   }
 
-  protected selectParkingArea(areaId: number): void {
-    this.selectedParkingAreaId.set(Number(areaId));
-    this.parkingAreaSlots.set([]);
-    if (!areaId) return;
-    this.api.parkingSlots(Number(areaId)).subscribe({
-      next: (slots) => this.parkingAreaSlots.set(slots),
-      error: (error) => this.flash(apiErrorMessage(error)),
-    });
+ protected selectParkingArea(areaId: number): void {
+  const id = Number(areaId);
+
+  if (!id) {
+    return;
   }
+
+  this.selectedParkingAreaId.set(id);
+  this.parkingAreaSlots.set([]);
+  this.actionLoading.set(true);
+
+  this.api.parkingSlots(id)
+    .pipe(
+      finalize(() => this.actionLoading.set(false))
+    )
+    .subscribe({
+      next: (slots) => {
+        this.parkingAreaSlots.set(slots);
+
+        setTimeout(() => {
+          document
+            .getElementById('parking-slot-manager')
+            ?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
+        }, 100);
+      },
+
+      error: (error) => {
+        this.flash(apiErrorMessage(error));
+      },
+    });
+}
 
   protected bulkCreateParkingSlots(): void {
     const areaId = this.selectedParkingAreaId();
